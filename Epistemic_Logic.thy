@@ -89,7 +89,7 @@ function semantics :: \<open>('i, 'w) kripke \<Rightarrow> 'w \<Rightarrow> 'i f
 termination 
 proof (relation \<open>measures [\<lambda> (_,_,p). common_count p, \<lambda> (_,_,p).f_size p]\<close>) 
   show \<open>\<And>M w is p x. ((M, w, Ev_n is p x), M, w, Co is p) \<in> measures [\<lambda>(_, _, p). common_count p, \<lambda>(_, _, p). f_size p]\<close>
-    using common_count_EV_n by auto
+    using common_count_EV_n_le_S by auto
 qed auto
 
 abbreviation validStar :: \<open>(('i, 'w) kripke \<Rightarrow> bool) \<Rightarrow> 'i fm set \<Rightarrow> 'i fm \<Rightarrow> bool\<close>
