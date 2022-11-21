@@ -72,8 +72,8 @@ primrec Ev_n where
   \<open>Ev_n g p 0 = p\<close> |
   \<open>Ev_n g p (Suc n) = Ev g (Ev_n g p n)\<close>
 
-lemma common_count_EV_n: \<open>common_count (Ev_n g p x) < Suc (common_count p)\<close>
-by (induct x) auto
+lemma common_count_EV_n: \<open>common_count (Ev_n g p n) < Suc (common_count p)\<close>
+  by (induct n) auto
 
 function semantics :: \<open>('i, 'w) kripke \<Rightarrow> 'w \<Rightarrow> 'i fm \<Rightarrow> bool\<close> (\<open>_, _ \<Turnstile> _\<close> [50, 50, 50] 50) where
   \<open>M, w \<Turnstile> \<^bold>\<bottom> \<longleftrightarrow> False\<close>
@@ -89,7 +89,7 @@ function semantics :: \<open>('i, 'w) kripke \<Rightarrow> 'w \<Rightarrow> 'i f
 termination 
 proof (relation \<open>measures [\<lambda> (_,_,p). common_count p, \<lambda> (_,_,p).f_size p]\<close>) 
   show \<open>\<And>M w is p x. ((M, w, Ev_n is p x), M, w, Co is p) \<in> measures [\<lambda>(_, _, p). common_count p, \<lambda>(_, _, p). f_size p]\<close>
-    using common_count_EV_n_le_S by auto
+    using common_count_EV_n by auto
 qed auto
 
 abbreviation validStar :: \<open>(('i, 'w) kripke \<Rightarrow> bool) \<Rightarrow> 'i fm set \<Rightarrow> 'i fm \<Rightarrow> bool\<close>
