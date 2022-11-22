@@ -293,17 +293,7 @@ next
 next
   case (C2 g p)
   have \<open>M, w \<Turnstile> Co g p \<Longrightarrow> M, w \<Turnstile> Ev g (p \<^bold>\<and> Co g p)\<close>
-  proof-
-    assume a: \<open>M, w \<Turnstile> Co g p\<close>
-    then have 1:\<open>M, w \<Turnstile> Ev g p\<close>
-      by auto
-    have \<open>\<forall> i \<in> set g. M, w \<Turnstile> K i (Co g p)\<close>
-      sorry
-    then have \<open>M, w \<Turnstile> Ev g (Co g p)\<close>
-      by simp
-    from this 1 show \<open>M, w \<Turnstile> Ev g (p \<^bold>\<and> Co g p)\<close> 
-      by simp
-  qed
+    by fastforce
   then show ?case
     by simp
 next
