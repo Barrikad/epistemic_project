@@ -265,10 +265,9 @@ theorem soundness:
   shows \<open>A \<turnstile> p \<Longrightarrow> P M \<Longrightarrow> w \<in> \<W> M \<Longrightarrow> M, w \<Turnstile> p\<close>
 proof (induct p arbitrary: w rule: AK.induct)
   case (C1a g p)
-  have \<open>(M, w \<Turnstile> Ev g p) \<Longrightarrow> (M, w \<Turnstile> unfold_Ev g p)\<close>
+  have \<open>M, w \<Turnstile> unfold_Ev g p\<close> if 1: \<open>M, w \<Turnstile> Ev g p\<close>
   proof -
-    assume \<open>M, w \<Turnstile> Ev g p\<close>
-    hence \<open>\<forall>i \<in> set g. M, w \<Turnstile> K i p\<close> by force
+    from 1 have \<open>\<forall>i \<in> set g. M, w \<Turnstile> K i p\<close> by auto 
     thus ?thesis
     proof (induct g)
       case (Cons a as)
@@ -282,7 +281,15 @@ proof (induct p arbitrary: w rule: AK.induct)
   thus ?case by simp
 next
   case (C1b g p)
-  then show ?case sorry
+  have \<open>(M, w \<Turnstile> unfold_Ev g p) \<Longrightarrow> (M, w \<Turnstile> Ev g p)\<close>
+  proof (induct g)
+    case (Cons a as)
+    have \<open>M, w \<Turnstile> K a p\<close>
+      using Cons.prems by fastforce 
+    thus ?case
+      using Cons.hyps Cons.prems by auto 
+  qed simp
+  thus ?case by simp
 next
   case (C2 g p)
   have \<open>M, w \<Turnstile> Co g p \<Longrightarrow> M, w \<Turnstile> Ev g (p \<^bold>\<and> Co g p)\<close>
