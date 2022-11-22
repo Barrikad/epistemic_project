@@ -100,7 +100,7 @@ abbreviation validStar :: \<open>(('i, 'w) kripke \<Rightarrow> bool) \<Rightarr
 section \<open>S5 Axioms\<close>
 
 definition reflexive :: \<open>('i, 'w, 'c) frame_scheme \<Rightarrow> bool\<close> where
-  \<open>reflexive M \<equiv> \<forall>i.  \<forall>w \<in> \<W> M. w \<in> \<K> M i w\<close>
+  \<open>reflexive M \<equiv> \<forall>i. \<forall>w \<in> \<W> M. w \<in> \<K> M i w\<close>
  
 definition symmetric :: \<open>('i, 'w, 'c) frame_scheme \<Rightarrow> bool\<close> where
   \<open>symmetric M \<equiv> \<forall>i. \<forall>v \<in> \<W> M. \<forall>w \<in> \<W> M. v \<in> \<K> M i w \<longleftrightarrow> w \<in> \<K> M i v\<close>
@@ -205,7 +205,7 @@ primrec eval :: \<open>(id \<Rightarrow> bool) \<Rightarrow> ('i fm \<Rightarrow
 
 abbreviation \<open>tautology p \<equiv> \<forall>g h. eval g h p\<close>
 
-abbreviation \<open>unfold_Ev g p \<equiv> fold (\<lambda> i q. K i p \<^bold>\<and> q) g \<^bold>\<top>\<close>
+abbreviation \<open>unfold_Ev g p \<equiv> foldr (\<lambda> i. (\<^bold>\<and>) (K i p)) g \<^bold>\<top>\<close>
 
 inductive AK :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm \<Rightarrow> bool\<close> (\<open>_ \<turnstile> _\<close> [50, 50] 50)
   for A :: \<open>'i fm \<Rightarrow> bool\<close> where
@@ -224,7 +224,7 @@ inductive AK :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm \<Rightarr
   | RC1: \<open>A \<turnstile> p \<^bold>\<longrightarrow> Ev g (q \<^bold>\<and> p) \<Longrightarrow> A \<turnstile> p \<^bold>\<longrightarrow> Co g q\<close>
 
 lemma imp_chain: \<open>A \<turnstile> a \<^bold>\<longrightarrow> b \<Longrightarrow> A \<turnstile> b \<^bold>\<longrightarrow> c \<Longrightarrow> A \<turnstile> a \<^bold>\<longrightarrow> c\<close>
-proof-
+proof -
   assume \<open>A \<turnstile> a \<^bold>\<longrightarrow> b\<close>
   moreover assume \<open>A \<turnstile> b \<^bold>\<longrightarrow> c\<close>
   moreover have \<open>A \<turnstile> (a \<^bold>\<longrightarrow> b) \<^bold>\<longrightarrow> (b \<^bold>\<longrightarrow> c) \<^bold>\<longrightarrow> (a \<^bold>\<longrightarrow> c)\<close>
@@ -232,7 +232,6 @@ proof-
   ultimately show \<open>A \<turnstile> a \<^bold>\<longrightarrow> c\<close>
     using R1 by metis
 qed
-
 
 primrec imply :: \<open>'i fm list \<Rightarrow> 'i fm \<Rightarrow> 'i fm\<close> (infixr \<open>\<^bold>\<leadsto>\<close> 56) where
   \<open>([] \<^bold>\<leadsto> q) = q\<close>
@@ -266,7 +265,21 @@ theorem soundness:
   shows \<open>A \<turnstile> p \<Longrightarrow> P M \<Longrightarrow> w \<in> \<W> M \<Longrightarrow> M, w \<Turnstile> p\<close>
 proof (induct p arbitrary: w rule: AK.induct)
   case (C1a g p)
-  then show ?case sorry
+  have \<open>(M, w \<Turnstile> Ev g p) \<Longrightarrow> (M, w \<Turnstile> unfold_Ev g p)\<close>
+  proof -
+    assume \<open>M, w \<Turnstile> Ev g p\<close>
+    hence \<open>\<forall>i \<in> set g. M, w \<Turnstile> K i p\<close> by force
+    thus ?thesis
+    proof (induct g)
+      case (Cons a as)
+      have \<open>M, w \<Turnstile> K a p\<close>
+        by (meson Cons.prems list.set_intros(1))
+      moreover have \<open>M, w \<Turnstile> foldr (\<lambda> i. (\<^bold>\<and>) (K i p)) as \<^bold>\<top>\<close>
+        using Cons.hyps Cons.prems by auto
+      ultimately show ?case by auto 
+    qed simp
+  qed
+  thus ?case by simp
 next
   case (C1b g p)
   then show ?case sorry
@@ -294,8 +307,11 @@ qed (auto simp: assms tautology)
 
 section \<open>Derived rules\<close>
 
-lemma EvExt: \<open>set g \<subseteq> set g' \<Longrightarrow> A \<turnstile> Ev g' p \<^bold>\<longrightarrow> Ev g p\<close>sorry
-lemma CoExt: \<open>set g \<subseteq> set g' \<Longrightarrow> A \<turnstile> Co g' p \<^bold>\<longrightarrow> Co g p\<close>sorry
+lemma EvExt: \<open>set g \<subseteq> set g' \<Longrightarrow> A \<turnstile> Ev g' p \<^bold>\<longrightarrow> Ev g p\<close>
+  sorry
+
+lemma CoExt: \<open>set g \<subseteq> set g' \<Longrightarrow> A \<turnstile> Co g' p \<^bold>\<longrightarrow> Co g p\<close>
+  sorry
 
 lemma K_A2': \<open>A \<turnstile> K i (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> K i p \<^bold>\<longrightarrow> K i q\<close>
 proof -
