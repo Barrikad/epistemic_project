@@ -222,9 +222,6 @@ inductive AK :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm \<Rightarr
   | D1b: \<open>A \<turnstile> K i p \<^bold>\<longrightarrow> Di [i] p\<close>
   | D2: \<open>set g \<subseteq> set g' \<Longrightarrow> A \<turnstile> Di g p \<^bold>\<longrightarrow> Di g' p\<close>
   | RC1: \<open>A \<turnstile> p \<^bold>\<longrightarrow> Ev g (q \<^bold>\<and> p) \<Longrightarrow> A \<turnstile> p \<^bold>\<longrightarrow> Co g q\<close>
-  (*the two below can be shown separately I think
-  | EvExt: \<open>set g \<subseteq> set g' \<Longrightarrow> A \<turnstile> Ev g' p \<^bold>\<longrightarrow> Ev g p\<close> 
-  | CoExt: \<open>set g \<subseteq> set g' \<Longrightarrow> A \<turnstile> Co g' p \<^bold>\<longrightarrow> Co g p\<close>*)
 
 lemma imp_chain: \<open>A \<turnstile> a \<^bold>\<longrightarrow> b \<Longrightarrow> A \<turnstile> b \<^bold>\<longrightarrow> c \<Longrightarrow> A \<turnstile> a \<^bold>\<longrightarrow> c\<close>
 proof-
@@ -265,9 +262,27 @@ qed
 theorem soundness:
   assumes \<open>\<And>M w p. A p \<Longrightarrow> P M \<Longrightarrow> w \<in> \<W> M \<Longrightarrow> M, w \<Turnstile> p\<close>
   shows \<open>A \<turnstile> p \<Longrightarrow> P M \<Longrightarrow> w \<in> \<W> M \<Longrightarrow> M, w \<Turnstile> p\<close>
-  by (induct p arbitrary: w rule: AK.induct) (auto simp: assms tautology)
+proof (induct p arbitrary: w rule: AK.induct)
+  case (C1a g p)
+  then show ?case sorry
+next
+  case (C1b g p)
+  then show ?case sorry
+next
+  case (C2 g p)
+  have \<open>M, w \<Turnstile> Co g p \<Longrightarrow> M, w \<Turnstile> Ev g (p \<^bold>\<and> Co g p)\<close> sorry
+  then show ?case
+    by simp
+next
+  case (RC1 p g q)
+  then show ?case sorry
+qed (auto simp: assms tautology) 
+
 
 section \<open>Derived rules\<close>
+
+lemma EvExt: \<open>set g \<subseteq> set g' \<Longrightarrow> A \<turnstile> Ev g' p \<^bold>\<longrightarrow> Ev g p\<close>sorry
+lemma CoExt: \<open>set g \<subseteq> set g' \<Longrightarrow> A \<turnstile> Co g' p \<^bold>\<longrightarrow> Co g p\<close>sorry
 
 lemma K_A2': \<open>A \<turnstile> K i (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> K i p \<^bold>\<longrightarrow> K i q\<close>
 proof -
