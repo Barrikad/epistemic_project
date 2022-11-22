@@ -259,6 +259,8 @@ proof -
     by (metis kripke.cases)
 qed
 
+(*lemma Co_fixed: \<open>w \<in> \<W> M \<Longrightarrow> M, w \<Turnstile> Co g p \<Longrightarrow> M, w \<Turnstile> Ev g (Co g p)\<close>*)
+
 theorem soundness:
   assumes \<open>\<And>M w p. A p \<Longrightarrow> P M \<Longrightarrow> w \<in> \<W> M \<Longrightarrow> M, w \<Turnstile> p\<close>
   shows \<open>A \<turnstile> p \<Longrightarrow> P M \<Longrightarrow> w \<in> \<W> M \<Longrightarrow> M, w \<Turnstile> p\<close>
@@ -270,7 +272,18 @@ next
   then show ?case sorry
 next
   case (C2 g p)
-  have \<open>M, w \<Turnstile> Co g p \<Longrightarrow> M, w \<Turnstile> Ev g (p \<^bold>\<and> Co g p)\<close> sorry
+  have \<open>M, w \<Turnstile> Co g p \<Longrightarrow> M, w \<Turnstile> Ev g (p \<^bold>\<and> Co g p)\<close>
+  proof-
+    assume a: \<open>M, w \<Turnstile> Co g p\<close>
+    then have 1:\<open>M, w \<Turnstile> Ev g p\<close>
+      by auto
+    have \<open>\<forall> i \<in> set g. M, w \<Turnstile> K i (Co g p)\<close>
+      sorry
+    then have \<open>M, w \<Turnstile> Ev g (Co g p)\<close>
+      by simp
+    from this 1 show \<open>M, w \<Turnstile> Ev g (p \<^bold>\<and> Co g p)\<close> 
+      by simp
+  qed
   then show ?case
     by simp
 next
