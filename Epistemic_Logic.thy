@@ -205,6 +205,8 @@ primrec eval :: \<open>(id \<Rightarrow> bool) \<Rightarrow> ('i fm \<Rightarrow
 
 abbreviation \<open>tautology p \<equiv> \<forall>g h. eval g h p\<close>
 
+abbreviation \<open>unfold_Ev g p \<equiv> fold (\<lambda> i q. K i p \<^bold>\<and> q) g \<^bold>\<top>\<close>
+
 inductive AK :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm \<Rightarrow> bool\<close> (\<open>_ \<turnstile> _\<close> [50, 50] 50)
   for A :: \<open>'i fm \<Rightarrow> bool\<close> where
     A1: \<open>tautology p \<Longrightarrow> A \<turnstile> p\<close>
@@ -213,7 +215,16 @@ inductive AK :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm \<Rightarr
   | R1: \<open>A \<turnstile> p \<Longrightarrow> A \<turnstile> p \<^bold>\<longrightarrow> q \<Longrightarrow> A \<turnstile> q\<close>
   | R2: \<open>A \<turnstile> p \<Longrightarrow> A \<turnstile> K i p\<close>
 (*group operator axioms*)
-  
+  | C1a: \<open>A \<turnstile> Ev g p \<^bold>\<longrightarrow> unfold_Ev g p\<close>
+  | C1b: \<open>A \<turnstile> unfold_Ev g p \<^bold>\<longrightarrow> Ev g p\<close>
+  | C2: \<open>A \<turnstile> Co g p \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> Co g p)\<close>
+  | D1a: \<open>A \<turnstile> Di [i] p \<^bold>\<longrightarrow> K i p\<close>
+  | D1b: \<open>A \<turnstile> K i p \<^bold>\<longrightarrow> Di [i] p\<close>
+  | D2: \<open>set g \<subseteq> set g' \<Longrightarrow> A \<turnstile> Di g p \<^bold>\<longrightarrow> Di g' p\<close>
+  | RC1: \<open>A \<turnstile> p \<^bold>\<longrightarrow> Ev g (q \<^bold>\<and> p) \<Longrightarrow> A \<turnstile> p \<^bold>\<longrightarrow> Co g q\<close>
+  (*the two below can be shown separately I think
+  | EvExt: \<open>set g \<subseteq> set g' \<Longrightarrow> A \<turnstile> Ev g' p \<^bold>\<longrightarrow> Ev g p\<close> 
+  | CoExt: \<open>set g \<subseteq> set g' \<Longrightarrow> A \<turnstile> Co g' p \<^bold>\<longrightarrow> Co g p\<close>*)
 
 lemma imp_chain: \<open>A \<turnstile> a \<^bold>\<longrightarrow> b \<Longrightarrow> A \<turnstile> b \<^bold>\<longrightarrow> c \<Longrightarrow> A \<turnstile> a \<^bold>\<longrightarrow> c\<close>
 proof-
