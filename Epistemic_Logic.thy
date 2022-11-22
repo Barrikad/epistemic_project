@@ -83,7 +83,7 @@ function semantics :: \<open>('i, 'w) kripke \<Rightarrow> 'w \<Rightarrow> 'i f
 | \<open>M, w \<Turnstile> p \<^bold>\<longrightarrow> q \<longleftrightarrow> M, w \<Turnstile> p \<longrightarrow> M, w \<Turnstile> q\<close>
 | \<open>M, w \<Turnstile> K i p \<longleftrightarrow> (\<forall>v \<in> \<W> M \<inter> \<K> M i w. M, v \<Turnstile> p)\<close>
 | \<open>M, w \<Turnstile> Ev g p \<longleftrightarrow> (\<forall> i \<in> set g. M, w \<Turnstile> K i p)\<close>
-| \<open>M, w \<Turnstile> Co g p \<longleftrightarrow> (\<forall> n. M, w \<Turnstile> Ev_n g p n)\<close>
+| \<open>M, w \<Turnstile> Co g p \<longleftrightarrow> (\<forall> n \<ge> 1. M, w \<Turnstile> Ev_n g p n)\<close>
 | \<open>M, w \<Turnstile> Di g p \<longleftrightarrow> (\<forall>v \<in> \<W> M \<inter> (\<Inter> i \<in> set g. \<K> M i w). M, v \<Turnstile> p)\<close>
   by pat_completeness auto
 termination 
@@ -212,7 +212,8 @@ inductive AK :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm \<Rightarr
   | Ax: \<open>A p \<Longrightarrow> A \<turnstile> p\<close>
   | R1: \<open>A \<turnstile> p \<Longrightarrow> A \<turnstile> p \<^bold>\<longrightarrow> q \<Longrightarrow> A \<turnstile> q\<close>
   | R2: \<open>A \<turnstile> p \<Longrightarrow> A \<turnstile> K i p\<close>
-
+(*group operator axioms*)
+  
 
 lemma imp_chain: \<open>A \<turnstile> a \<^bold>\<longrightarrow> b \<Longrightarrow> A \<turnstile> b \<^bold>\<longrightarrow> c \<Longrightarrow> A \<turnstile> a \<^bold>\<longrightarrow> c\<close>
 proof-
