@@ -337,8 +337,15 @@ proof-
     by (metis a A1 C1a C1b imp_chain)
 qed
 
-lemma CoExt: \<open>set g \<subseteq> set g' \<Longrightarrow> A \<turnstile> Co g' p \<^bold>\<longrightarrow> Co g p\<close>
-  sorry
+lemma CoExt: \<open>A \<turnstile> Co g' p \<^bold>\<longrightarrow> Co g p\<close> if a: \<open>set g \<subseteq> set g'\<close>
+proof-
+  have \<open>A \<turnstile> Co g' p \<^bold>\<longrightarrow> Ev g' (p \<^bold>\<and> Co g' p)\<close> ..
+  moreover have \<open>A \<turnstile> Ev g' (p \<^bold>\<and> Co g' p) \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> Co g' p)\<close>
+    using a EvExt by fast
+  ultimately have \<open>A \<turnstile> Co g' p \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> Co g' p)\<close>
+    using imp_chain by auto
+  then show ?thesis ..
+qed
 
 lemma K_A2': \<open>A \<turnstile> K i (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> K i p \<^bold>\<longrightarrow> K i q\<close>
 proof -
