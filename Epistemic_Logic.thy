@@ -264,31 +264,6 @@ qed
 lemma Ev_n_conE1: \<open>M, w \<Turnstile> Ev_n g (p \<^bold>\<and> q) n \<Longrightarrow> M, w \<Turnstile> Ev_n g p n\<close>
   by (induct n arbitrary: w) auto
 
-(*
-subsection \<open>G-reachability\<close>
-(*following G-reachability notes by Nina*)
-
-inductive G_reach_k where 
-  G_reach_0: \<open>G_reach_k M g s s 0\<close> |
-  G_reach_Suc: 
-  \<open>G_reach_k M g s t (Suc k)\<close> if \<open>\<forall> i \<in> set g. t \<in> \<W> M \<inter> \<K> M i u\<close> and \<open>G_reach_k M i s u k\<close>
-
-lemma G_reach_1: \<open>k \<ge> 1 \<Longrightarrow> M, s \<Turnstile> Ev_n g p k \<longleftrightarrow> (\<forall> t. G_reach_k M g s t k \<longrightarrow> M, t \<Turnstile> p)\<close>
-proof (induct k rule: less_induct)
-  case (less x)
-  then consider \<open>x = 1\<close> | \<open>x > 1\<close>
-    by linarith
-  then show ?case 
-  proof cases
-    case 1
-    then show ?thesis 
-      using G_reach_0 G_reach_Suc sorry
-  next
-    case 2
-    then show ?thesis sorry
-  qed
-qed*)
-
 subsection \<open>Soundness theorem\<close>
 
 theorem soundness:
