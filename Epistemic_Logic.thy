@@ -221,7 +221,6 @@ inductive AK :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm \<Rightarr
   | D1a: \<open>A \<turnstile> Di [i] p \<^bold>\<longrightarrow> K i p\<close>
   | D1b: \<open>A \<turnstile> K i p \<^bold>\<longrightarrow> Di [i] p\<close>
   | D2: \<open>set g \<subseteq> set g' \<Longrightarrow> A \<turnstile> Di g p \<^bold>\<longrightarrow> Di g' p\<close>
-  | Dmp: \<open>A \<turnstile> Di g p \<^bold>\<and> Di g (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> Di g q\<close>
   | RC1: \<open>A \<turnstile> p \<^bold>\<longrightarrow> Ev g (q \<^bold>\<and> p) \<Longrightarrow> A \<turnstile> p \<^bold>\<longrightarrow> Co g q\<close>
 
 primrec imply :: \<open>'i fm list \<Rightarrow> 'i fm \<Rightarrow> 'i fm\<close> (infixr \<open>\<^bold>\<leadsto>\<close> 56) where
@@ -346,6 +345,21 @@ proof-
   ultimately have \<open>A \<turnstile> Co g' p \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> Co g' p)\<close>
     using imp_chain by auto
   then show ?thesis ..
+qed
+
+lemma con_imp: \<open>A \<turnstile> p \<^bold>\<longrightarrow> q \<Longrightarrow> A \<turnstile> a \<^bold>\<longrightarrow> b \<Longrightarrow> A \<turnstile> p \<^bold>\<and> a \<^bold>\<longrightarrow> q \<^bold>\<and> b\<close> sorry
+
+lemma D_mp: \<open>g \<noteq> [] \<Longrightarrow> A \<turnstile> Di g p \<^bold>\<and> Di g (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> Di g q\<close>
+proof -
+  assume \<open>g \<noteq> []\<close>
+  then obtain i g' where \<open>g = i # g'\<close>
+    using list.exhaust_sel by auto
+  have \<open>A \<turnstile> Di [i] p \<^bold>\<and> Di [i] (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> Di [i] q\<close> 
+    using con_imp imp_chain AK.intros by meson
+  moreover have \<open>set [i] \<subseteq> set g\<close>
+    using \<open>g = i # g'\<close> by simp
+  ultimately show ?thesis
+    using con_imp imp_chain D2 sorry
 qed
 
 lemma K_A2': \<open>A \<turnstile> K i (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> K i p \<^bold>\<longrightarrow> K i q\<close>
