@@ -260,6 +260,37 @@ qed
 
 (*lemma Co_fixed: \<open>w \<in> \<W> M \<Longrightarrow> M, w \<Turnstile> Co g p \<Longrightarrow> M, w \<Turnstile> Ev g (Co g p)\<close>*)
 
+
+lemma Ev_n_conE1: \<open>M, w \<Turnstile> Ev_n g (p \<^bold>\<and> q) n \<Longrightarrow> M, w \<Turnstile> Ev_n g p n\<close>
+  by (induct n arbitrary: w) auto
+
+(*
+subsection \<open>G-reachability\<close>
+(*following G-reachability notes by Nina*)
+
+inductive G_reach_k where 
+  G_reach_0: \<open>G_reach_k M g s s 0\<close> |
+  G_reach_Suc: 
+  \<open>G_reach_k M g s t (Suc k)\<close> if \<open>\<forall> i \<in> set g. t \<in> \<W> M \<inter> \<K> M i u\<close> and \<open>G_reach_k M i s u k\<close>
+
+lemma G_reach_1: \<open>k \<ge> 1 \<Longrightarrow> M, s \<Turnstile> Ev_n g p k \<longleftrightarrow> (\<forall> t. G_reach_k M g s t k \<longrightarrow> M, t \<Turnstile> p)\<close>
+proof (induct k rule: less_induct)
+  case (less x)
+  then consider \<open>x = 1\<close> | \<open>x > 1\<close>
+    by linarith
+  then show ?case 
+  proof cases
+    case 1
+    then show ?thesis 
+      using G_reach_0 G_reach_Suc sorry
+  next
+    case 2
+    then show ?thesis sorry
+  qed
+qed*)
+
+subsection \<open>Soundness theorem\<close>
+
 theorem soundness:
   assumes \<open>\<And>M w p. A p \<Longrightarrow> P M \<Longrightarrow> w \<in> \<W> M \<Longrightarrow> M, w \<Turnstile> p\<close>
   shows \<open>A \<turnstile> p \<Longrightarrow> P M \<Longrightarrow> w \<in> \<W> M \<Longrightarrow> M, w \<Turnstile> p\<close>
@@ -292,13 +323,22 @@ next
   thus ?case by simp
 next
   case (C2 g p)
-  have \<open>M, w \<Turnstile> Co g p \<Longrightarrow> M, w \<Turnstile> Ev g (p \<^bold>\<and> Co g p)\<close>
-    by fastforce
   then show ?case
-    by simp
+    by fastforce
 next
   case (RC1 p g q)
-  then show ?case sorry
+  then have fix_point: \<open>\<forall> v. v \<in> \<W> M \<longrightarrow> M, v \<Turnstile> p \<longrightarrow> M, v \<Turnstile> Ev g (q \<^bold>\<and> p)\<close> 
+    by (metis semantics.simps(5))
+  have \<open>n \<ge> 1 \<Longrightarrow> w \<in> \<W> M \<Longrightarrow>  M, w \<Turnstile> p \<Longrightarrow> M, w \<Turnstile> Ev_n g (q \<^bold>\<and> p) n\<close> for n
+  proof (induct n arbitrary: w)
+    case (Suc n)
+    consider (n_0) \<open>n = 0\<close> | (n_Suc) \<open>1 \<le> n\<close> 
+      by linarith
+    then show ?case 
+      using Suc fix_point by cases auto
+  qed simp
+  then show ?case 
+    using RC1(4) Ev_n_conE1 by fastforce
 qed (auto simp: assms tautology) 
 
 
