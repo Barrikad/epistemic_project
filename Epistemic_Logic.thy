@@ -221,6 +221,7 @@ inductive AK :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm \<Rightarr
   | D1a: \<open>A \<turnstile> Di [i] p \<^bold>\<longrightarrow> K i p\<close>
   | D1b: \<open>A \<turnstile> K i p \<^bold>\<longrightarrow> Di [i] p\<close>
   | D2: \<open>set g \<subseteq> set g' \<Longrightarrow> A \<turnstile> Di g p \<^bold>\<longrightarrow> Di g' p\<close>
+  | Dmp: \<open>A \<turnstile> Di g p \<^bold>\<and> Di g (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> Di g q\<close>
   | RC1: \<open>A \<turnstile> p \<^bold>\<longrightarrow> Ev g (q \<^bold>\<and> p) \<Longrightarrow> A \<turnstile> p \<^bold>\<longrightarrow> Co g q\<close>
 
 primrec imply :: \<open>'i fm list \<Rightarrow> 'i fm \<Rightarrow> 'i fm\<close> (infixr \<open>\<^bold>\<leadsto>\<close> 56) where
