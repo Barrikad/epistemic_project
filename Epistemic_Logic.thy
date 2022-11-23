@@ -223,16 +223,6 @@ inductive AK :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm \<Rightarr
   | D2: \<open>set g \<subseteq> set g' \<Longrightarrow> A \<turnstile> Di g p \<^bold>\<longrightarrow> Di g' p\<close>
   | RC1: \<open>A \<turnstile> p \<^bold>\<longrightarrow> Ev g (q \<^bold>\<and> p) \<Longrightarrow> A \<turnstile> p \<^bold>\<longrightarrow> Co g q\<close>
 
-lemma imp_chain: \<open>A \<turnstile> a \<^bold>\<longrightarrow> b \<Longrightarrow> A \<turnstile> b \<^bold>\<longrightarrow> c \<Longrightarrow> A \<turnstile> a \<^bold>\<longrightarrow> c\<close>
-proof -
-  assume \<open>A \<turnstile> a \<^bold>\<longrightarrow> b\<close>
-  moreover assume \<open>A \<turnstile> b \<^bold>\<longrightarrow> c\<close>
-  moreover have \<open>A \<turnstile> (a \<^bold>\<longrightarrow> b) \<^bold>\<longrightarrow> (b \<^bold>\<longrightarrow> c) \<^bold>\<longrightarrow> (a \<^bold>\<longrightarrow> c)\<close>
-    using A1 by force
-  ultimately show \<open>A \<turnstile> a \<^bold>\<longrightarrow> c\<close>
-    using R1 by metis
-qed
-
 primrec imply :: \<open>'i fm list \<Rightarrow> 'i fm \<Rightarrow> 'i fm\<close> (infixr \<open>\<^bold>\<leadsto>\<close> 56) where
   \<open>([] \<^bold>\<leadsto> q) = q\<close>
 | \<open>(p # ps \<^bold>\<leadsto> q) = (p \<^bold>\<longrightarrow> ps \<^bold>\<leadsto> q)\<close>
@@ -258,13 +248,8 @@ proof -
     by (metis kripke.cases)
 qed
 
-(*lemma Co_fixed: \<open>w \<in> \<W> M \<Longrightarrow> M, w \<Turnstile> Co g p \<Longrightarrow> M, w \<Turnstile> Ev g (Co g p)\<close>*)
-
-
 lemma Ev_n_conE1: \<open>M, w \<Turnstile> Ev_n g (p \<^bold>\<and> q) n \<Longrightarrow> M, w \<Turnstile> Ev_n g p n\<close>
   by (induct n arbitrary: w) auto
-
-subsection \<open>Soundness theorem\<close>
 
 theorem soundness:
   assumes \<open>\<And>M w p. A p \<Longrightarrow> P M \<Longrightarrow> w \<in> \<W> M \<Longrightarrow> M, w \<Turnstile> p\<close>
@@ -319,8 +304,38 @@ qed (auto simp: assms tautology)
 
 section \<open>Derived rules\<close>
 
+lemma imp_chain: \<open>A \<turnstile> a \<^bold>\<longrightarrow> b \<Longrightarrow> A \<turnstile> b \<^bold>\<longrightarrow> c \<Longrightarrow> A \<turnstile> a \<^bold>\<longrightarrow> c\<close>
+proof -
+  assume \<open>A \<turnstile> a \<^bold>\<longrightarrow> b\<close>
+  moreover assume \<open>A \<turnstile> b \<^bold>\<longrightarrow> c\<close>
+  moreover have \<open>A \<turnstile> (a \<^bold>\<longrightarrow> b) \<^bold>\<longrightarrow> (b \<^bold>\<longrightarrow> c) \<^bold>\<longrightarrow> (a \<^bold>\<longrightarrow> c)\<close>
+    using A1 by force
+  ultimately show \<open>A \<turnstile> a \<^bold>\<longrightarrow> c\<close>
+    using R1 by metis
+qed
+
+lemma Ev_n_eval: \<open>i \<in> set g \<Longrightarrow> eval f h (unfold_Ev g p) \<Longrightarrow> eval f h (K i p)\<close>
+  by (induct g) auto
+
 lemma EvExt: \<open>set g \<subseteq> set g' \<Longrightarrow> A \<turnstile> Ev g' p \<^bold>\<longrightarrow> Ev g p\<close>
-  sorry
+proof-
+  assume a:\<open>set g \<subseteq> set g'\<close>
+  have \<open>set g \<subseteq> set g' \<Longrightarrow> tautology (unfold_Ev g' p \<^bold>\<longrightarrow> unfold_Ev g p)\<close> 
+  proof (rule allI, rule allI)
+    fix f h
+    assume \<open>set g \<subseteq> set g'\<close>
+    moreover have \<open>set g \<subseteq> set g' \<Longrightarrow> eval f h (unfold_Ev g' p) \<Longrightarrow> eval f h (unfold_Ev g p)\<close>
+    proof (induct g)
+      case (Cons i g)
+      then show ?case 
+        using Cons Ev_n_eval by auto
+    qed simp
+    ultimately show \<open>eval f h (unfold_Ev g' p \<^bold>\<longrightarrow> unfold_Ev g p)\<close>
+      by simp
+  qed
+  then show ?thesis
+    by (metis a A1 C1a C1b imp_chain)
+qed
 
 lemma CoExt: \<open>set g \<subseteq> set g' \<Longrightarrow> A \<turnstile> Co g' p \<^bold>\<longrightarrow> Co g p\<close>
   sorry
