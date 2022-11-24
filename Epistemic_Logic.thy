@@ -928,6 +928,13 @@ next
   qed simp
 qed
 
+lemma truth_lemma_Ev: 
+  fixes p :: \<open>('i :: countable) fm\<close>
+  assumes prem1: \<open>consistent A V\<close> and prem2: \<open>maximal A V\<close>
+  assumes hyp:\<open>\<And> V. consistent A V \<Longrightarrow> maximal A V \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A, V \<Turnstile> p\<close>
+  shows \<open>Ev g p \<in> V \<longleftrightarrow> canonical A, V \<Turnstile> Ev g p\<close>
+  sorry
+
 lemma truth_lemma:
   fixes p :: \<open>('i :: countable) fm\<close>
   assumes \<open>consistent A V\<close> and \<open>maximal A V\<close>
@@ -1029,7 +1036,8 @@ next
     using truth_lemma_K by blast
 next
   case (Ev g p)
-  then show ?case sorry
+  then show ?case 
+    using truth_lemma_Ev by blast
 next
   case (Co g p)
   then show ?case sorry
