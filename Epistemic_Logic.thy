@@ -358,7 +358,158 @@ proof-
   then show ?thesis ..
 qed
 
-lemma Ev_conE1: \<open>A \<turnstile> Ev g (p \<^bold>\<and> q) \<^bold>\<longrightarrow> Ev g p\<close> sorry
+lemma empty_fold: \<open>foldr (\<lambda>i. (\<^bold>\<and>) (K i p)) [] \<^bold>\<top> = \<^bold>\<top>\<close> 
+  by simp
+
+lemma Ev_empty_group: \<open>A \<turnstile> Ev [] p\<close> 
+proof-
+  have \<open>A \<turnstile> \<^bold>\<top> \<^bold>\<longrightarrow> Ev [] p\<close>
+    using C1b empty_fold by metis
+  then show ?thesis
+    using A1 R1 C1b eval.simps(5) by blast
+qed
+
+lemma con_rule: \<open>A \<turnstile> p \<Longrightarrow> A \<turnstile> q \<Longrightarrow> A \<turnstile> p \<^bold>\<and> q\<close>
+proof-
+  assume \<open>A \<turnstile> p\<close>
+  moreover assume \<open>A \<turnstile> q\<close>
+  moreover have \<open>A \<turnstile> p \<^bold>\<longrightarrow> q \<^bold>\<longrightarrow> p \<^bold>\<and> q\<close>
+    using A1 by force
+  ultimately show ?thesis
+    using R1 by blast
+qed
+
+lemma Ev_R2: \<open>A \<turnstile> p \<Longrightarrow> A \<turnstile> Ev g p\<close>
+proof (induct g)
+  case Nil
+  then show ?case 
+    using Ev_empty_group by fast
+next
+  case (Cons i g)
+  then have \<open>A \<turnstile> K i p\<close> 
+    using R2 by simp
+  moreover have \<open>A \<turnstile> unfold_Ev g p\<close>
+    using Cons C1a R1 by blast
+  ultimately have \<open>A \<turnstile> unfold_Ev (i # g) p\<close>
+    using con_rule by auto
+  then show ?case 
+    using C1b R1 by blast
+qed
+
+lemma conE1: \<open>A \<turnstile> p \<^bold>\<and> q \<^bold>\<longrightarrow> p\<close>
+  using A1 R1 by force
+
+lemma conE2: \<open>A \<turnstile> p \<^bold>\<and> q \<^bold>\<longrightarrow> q\<close>
+  using A1 R1 by force
+
+lemma con_imp2: \<open>A \<turnstile> p \<^bold>\<longrightarrow> q \<Longrightarrow> A \<turnstile> p \<^bold>\<longrightarrow> r \<Longrightarrow> A \<turnstile> p \<^bold>\<longrightarrow> q \<^bold>\<and> r\<close>
+  by (metis A1 con_imp eval.simps(4) eval.simps(5) imp_chain)
+
+lemma Ev_A2: \<open>A \<turnstile> Ev g p \<^bold>\<and> Ev g (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> Ev g q\<close>
+proof (induct g)
+  case Nil
+  then show ?case 
+    using Ev_empty_group A1 R1 by force
+next
+  case (Cons i g)
+  have 1: \<open>A \<turnstile> 
+    Ev (i # g) p \<^bold>\<and> Ev (i # g) (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> unfold_Ev (i # g) p \<^bold>\<and> unfold_Ev (i # g) (p \<^bold>\<longrightarrow> q)\<close>
+    using C1a con_imp by blast
+  moreover have \<open>A \<turnstile> 
+    unfold_Ev (i # g) p \<^bold>\<and> unfold_Ev (i # g) (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> unfold_Ev g p \<^bold>\<and> unfold_Ev g (p \<^bold>\<longrightarrow> q)\<close>
+    using conE2 con_imp by fastforce
+  moreover have \<open>A \<turnstile> unfold_Ev g p \<^bold>\<and> unfold_Ev g (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> Ev g p \<^bold>\<and> Ev g (p \<^bold>\<longrightarrow> q)\<close>
+    using C1b con_imp by blast
+  moreover have \<open>A \<turnstile> Ev g p \<^bold>\<and> Ev g (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> Ev g q\<close>
+    using Cons .
+  moreover have \<open>A \<turnstile> Ev g q \<^bold>\<longrightarrow> unfold_Ev g q\<close>
+    using C1a .
+  ultimately have 2: \<open>A \<turnstile> Ev (i # g) p \<^bold>\<and> Ev (i # g) (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> unfold_Ev g q\<close>
+    using imp_chain by meson
+  have \<open>A \<turnstile> unfold_Ev (i # g) p \<^bold>\<and> unfold_Ev (i # g) (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> K i p \<^bold>\<and> K i (p \<^bold>\<longrightarrow> q)\<close>
+    using conE1 con_imp by fastforce
+  moreover have \<open>A \<turnstile> K i p \<^bold>\<and> K i (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> K i q\<close> 
+    using A2 .
+  ultimately have \<open>A \<turnstile> Ev (i # g) p \<^bold>\<and> Ev (i # g) (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> K i q\<close>
+    using 1 imp_chain by blast
+  from this 2 have \<open>A \<turnstile> Ev (i # g) p \<^bold>\<and> Ev (i # g) (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> unfold_Ev (i # g) q\<close> 
+    using con_imp2 by auto
+  then show ?case 
+    using imp_chain C1b by blast
+qed
+
+lemma con_imp_antecedents: \<open>(A \<turnstile> p \<^bold>\<and> q \<^bold>\<longrightarrow> r) = (A \<turnstile> p \<^bold>\<longrightarrow> q \<^bold>\<longrightarrow> r)\<close>
+proof (rule iffI)
+  assume \<open>A \<turnstile> p \<^bold>\<and> q \<^bold>\<longrightarrow> r\<close>
+  moreover have \<open>A \<turnstile> (p \<^bold>\<and> q \<^bold>\<longrightarrow> r) \<^bold>\<longrightarrow> p \<^bold>\<longrightarrow> q \<^bold>\<longrightarrow> r\<close>
+    using A1 by force
+  ultimately show \<open>A \<turnstile> p \<^bold>\<longrightarrow> q \<^bold>\<longrightarrow> r\<close>
+    using R1 by auto
+next
+  assume \<open>A \<turnstile> p \<^bold>\<longrightarrow> q \<^bold>\<longrightarrow> r\<close>
+  moreover have \<open>A \<turnstile> (p \<^bold>\<longrightarrow> q \<^bold>\<longrightarrow> r) \<^bold>\<longrightarrow> p \<^bold>\<and> q \<^bold>\<longrightarrow> r\<close>
+    using A1 by force
+  ultimately show \<open>A \<turnstile> p \<^bold>\<and> q \<^bold>\<longrightarrow> r\<close>
+    using R1 by auto
+qed
+
+lemma swap_antecedents: \<open>(A \<turnstile> p \<^bold>\<and> q \<^bold>\<longrightarrow> r) = (A \<turnstile> q \<^bold>\<and> p \<^bold>\<longrightarrow> r)\<close>
+  using conE1 conE2 con_imp2 imp_chain by blast
+
+lemma Ev_conE1: \<open>A \<turnstile> Ev g (p \<^bold>\<and> q) \<^bold>\<longrightarrow> Ev g p\<close> 
+proof-
+  have \<open>A \<turnstile> Ev g (p \<^bold>\<and> q \<^bold>\<longrightarrow> p)\<close>
+    using conE1 Ev_R2 by fast
+  moreover have \<open>A \<turnstile> Ev g (p \<^bold>\<and> q) \<^bold>\<and> Ev g (p \<^bold>\<and> q \<^bold>\<longrightarrow> p) \<^bold>\<longrightarrow> Ev g p\<close>
+    using Ev_A2 by auto
+  ultimately show ?thesis
+    using con_imp_antecedents swap_antecedents R1 by fast
+qed
+
+lemma Ev_conE2: \<open>A \<turnstile> Ev g (p \<^bold>\<and> q) \<^bold>\<longrightarrow> Ev g q\<close> 
+proof-
+  have \<open>A \<turnstile> Ev g (p \<^bold>\<and> q \<^bold>\<longrightarrow> q)\<close>
+    using conE2 Ev_R2 by fast
+  moreover have \<open>A \<turnstile> Ev g (p \<^bold>\<and> q) \<^bold>\<and> Ev g (p \<^bold>\<and> q \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> Ev g q\<close>
+    using Ev_A2 by auto
+  ultimately show ?thesis
+    using con_imp_antecedents swap_antecedents R1 by fast
+qed
+
+lemma Co_imp_Ev_n: \<open>n \<ge> 1 \<Longrightarrow> A \<turnstile> Co g p \<^bold>\<longrightarrow> Ev_n g p n\<close> 
+proof (induct n rule: less_induct)
+  case (less n')
+  then consider (n'_eq_1)\<open>n' = 1\<close> | (n'_geq_2)\<open>n' > 1\<close>
+    by linarith
+  then show ?case
+  proof cases
+    case n'_eq_1
+    have \<open>A \<turnstile> Co g p \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> Co g p)\<close>
+      using C2 by auto
+    moreover have \<open>A \<turnstile> Ev g (p \<^bold>\<and> Co g p) \<^bold>\<longrightarrow> Ev g p\<close>
+      using Ev_conE1 by auto
+    ultimately show ?thesis
+      using n'_eq_1 imp_chain by auto
+  next
+    case n'_geq_2
+    then have \<open>A \<turnstile> Co g p \<^bold>\<longrightarrow> Ev_n g p (n' - 1)\<close> 
+      using less by simp
+    then have 1: \<open>A \<turnstile> Ev g (Co g p \<^bold>\<longrightarrow> Ev_n g p (n' - 1))\<close>
+      by (simp add: Ev_R2)
+    have \<open>A \<turnstile> Co g p \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> Co g p)\<close> ..
+    then have 2:\<open>A \<turnstile> Co g p \<^bold>\<longrightarrow> Ev g (Co g p)\<close> 
+      using imp_chain Ev_conE2 by blast
+    have \<open>A \<turnstile> 
+      Ev g (Co g p) \<^bold>\<and> Ev g (Co g p \<^bold>\<longrightarrow> Ev_n g p (n' - 1)) \<^bold>\<longrightarrow> Ev g (Ev_n g p (n' - 1))\<close>
+      using Ev_A2 by auto
+    then have \<open>A \<turnstile> Ev g (Co g p) \<^bold>\<longrightarrow> Ev g (Ev_n g p (n' - 1))\<close>
+      using 1 R1 swap_antecedents con_imp_antecedents by meson
+    moreover have \<open>Ev g (Ev_n g p (n' - 1)) = Ev_n g p n'\<close> 
+      by (metis Ev_n.simps(2) Suc_eq_plus1 add.commute le_add_diff_inverse less.prems)
+    ultimately show ?thesis 
+      using 2 imp_chain by auto
+  qed
+qed
 
 lemma K_A2': \<open>A \<turnstile> K i (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> K i p \<^bold>\<longrightarrow> K i q\<close>
 proof -
@@ -1063,29 +1214,12 @@ next
   proof (rule iffI)
     assume a: \<open>Co g p \<in> V\<close>
     have \<open>n \<ge> 1 \<Longrightarrow> Ev_n g p n \<in> V\<close> for n
-    proof (induct n rule: less_induct)
-      case (less n')
-      then consider (n'_eq_1)\<open>n' = 1\<close> | (n'_geq_2)\<open>n' > 1\<close>
-        by linarith
-      then show ?case
-      proof cases
-        case n'_eq_1
-        have \<open>A \<turnstile> Co g p \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> Co g p)\<close>
-          using C2 by auto
-        moreover have \<open>A \<turnstile> Ev g (p \<^bold>\<and> Co g p) \<^bold>\<longrightarrow> Ev g p\<close>
-          using Ev_conE1 by auto
-        ultimately have \<open>A \<turnstile> Co g p \<^bold>\<longrightarrow> Ev g p\<close>
-          using imp_chain by auto
-        then have \<open>Co g p \<^bold>\<longrightarrow> Ev g p \<in> V\<close>
-          using Co.prems deriv_in_maximal by blast
-        then have \<open>Ev g p \<in> V\<close>
-          using a Co.prems consequent_in_maximal by blast
-        then show ?thesis  
-          by (simp add: n'_eq_1) 
-      next
-        case n'_geq_2
-        then show ?thesis sorry
-      qed
+    proof-
+      assume \<open>n \<ge> 1\<close>
+      then have \<open>Co g p \<^bold>\<longrightarrow> Ev_n g p n \<in> V\<close>
+        using Co.prems Co_imp_Ev_n deriv_in_maximal by blast
+      then show ?thesis
+        using a Co.prems consequent_in_maximal by blast
     qed
     then have \<open>\<forall> n \<ge> 1. canonical A, V \<Turnstile> Ev_n g p n\<close> 
       using 1 by simp
