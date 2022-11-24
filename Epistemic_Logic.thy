@@ -358,6 +358,7 @@ proof-
   then show ?thesis ..
 qed
 
+lemma Ev_conE1: \<open>A \<turnstile> Ev g (p \<^bold>\<and> q) \<^bold>\<longrightarrow> Ev g p\<close> sorry
 
 lemma K_A2': \<open>A \<turnstile> K i (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> K i p \<^bold>\<longrightarrow> K i q\<close>
 proof -
@@ -933,7 +934,23 @@ lemma truth_lemma_Ev:
   assumes prem1: \<open>consistent A V\<close> and prem2: \<open>maximal A V\<close>
   assumes hyp:\<open>\<And> V. consistent A V \<Longrightarrow> maximal A V \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A, V \<Turnstile> p\<close>
   shows \<open>Ev g p \<in> V \<longleftrightarrow> canonical A, V \<Turnstile> Ev g p\<close>
-  sorry
+proof (induct g)
+  case Nil
+  then show ?case sorry
+next
+  case (Cons a g)
+  then show ?case sorry
+qed
+
+lemma truth_lemma_Ev_n: 
+  fixes p :: \<open>('i :: countable) fm\<close>
+  assumes prem1: \<open>consistent A V\<close> and prem2: \<open>maximal A V\<close>
+  assumes hyp:\<open>\<And> V. consistent A V \<Longrightarrow> maximal A V \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A, V \<Turnstile> p\<close>
+  shows \<open>n \<ge> 1 \<Longrightarrow> Ev_n g p n \<in> V \<longleftrightarrow> canonical A, V \<Turnstile> Ev_n g p n\<close>(*might need to strengthen the claim like I did for soundness*)
+proof (induct n rule: less_induct) 
+  case less
+  then show ?case sorry
+qed
 
 lemma truth_lemma:
   fixes p :: \<open>('i :: countable) fm\<close>
@@ -1026,7 +1043,7 @@ next
     then have \<open>(\<^bold>\<not> p) \<in> V \<or> q \<in> V\<close>
       using Imp.prems exactly_one_in_maximal by blast
     moreover have \<open>A \<turnstile> \<^bold>\<not> p \<^bold>\<longrightarrow> p \<^bold>\<longrightarrow> q\<close> \<open>A \<turnstile> q \<^bold>\<longrightarrow> p \<^bold>\<longrightarrow> q\<close>
-      by (auto simp: A1)
+      by (auto simp: A1)             
     ultimately show \<open>(p \<^bold>\<longrightarrow> q) \<in> V\<close>
       using Imp.prems deriv_in_maximal consequent_in_maximal by blast
   qed
@@ -1040,7 +1057,44 @@ next
     using truth_lemma_Ev by blast
 next
   case (Co g p)
-  then show ?case sorry
+  then have 1: \<open>\<forall> n \<ge> 1. Ev_n g p n \<in> V \<longleftrightarrow> canonical A, V \<Turnstile> Ev_n g p n\<close>
+    using truth_lemma_Ev_n by blast
+  show ?case
+  proof (rule iffI)
+    assume a: \<open>Co g p \<in> V\<close>
+    have \<open>n \<ge> 1 \<Longrightarrow> Ev_n g p n \<in> V\<close> for n
+    proof (induct n rule: less_induct)
+      case (less n')
+      then consider (n'_eq_1)\<open>n' = 1\<close> | (n'_geq_2)\<open>n' > 1\<close>
+        by linarith
+      then show ?case
+      proof cases
+        case n'_eq_1
+        have \<open>A \<turnstile> Co g p \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> Co g p)\<close>
+          using C2 by auto
+        moreover have \<open>A \<turnstile> Ev g (p \<^bold>\<and> Co g p) \<^bold>\<longrightarrow> Ev g p\<close>
+          using Ev_conE1 by auto
+        ultimately have \<open>A \<turnstile> Co g p \<^bold>\<longrightarrow> Ev g p\<close>
+          using imp_chain by auto
+        then have \<open>Co g p \<^bold>\<longrightarrow> Ev g p \<in> V\<close>
+          using Co.prems deriv_in_maximal by blast
+        then have \<open>Ev g p \<in> V\<close>
+          using a Co.prems consequent_in_maximal by blast
+        then show ?thesis  
+          by (simp add: n'_eq_1) 
+      next
+        case n'_geq_2
+        then show ?thesis sorry
+      qed
+    qed
+    then have \<open>\<forall> n \<ge> 1. canonical A, V \<Turnstile> Ev_n g p n\<close> 
+      using 1 by simp
+    then show \<open>canonical A, V \<Turnstile> Co g p\<close>
+      by simp
+  next
+    assume \<open>canonical A, V \<Turnstile> Co g p\<close> 
+    show \<open>Co g p \<in> V\<close>sorry
+  qed
 next
   case (Di g p)
   then show ?case sorry
