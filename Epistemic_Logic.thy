@@ -873,6 +873,61 @@ abbreviation mcss :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm set s
 abbreviation canonical :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> ('i, 'i fm set) kripke\<close> where
   \<open>canonical A \<equiv> \<lparr>\<W> = mcss A, \<K> = reach A, \<pi> = pi\<rparr>\<close>
 
+lemma truth_lemma_K: 
+  fixes p :: \<open>('i :: countable) fm\<close>
+  assumes prem1: \<open>consistent A V\<close> and prem2: \<open>maximal A V\<close>
+  assumes hyp:\<open>\<And> V. consistent A V \<Longrightarrow> maximal A V \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A, V \<Turnstile> p\<close>
+  shows \<open>K i p \<in> V \<longleftrightarrow> canonical A, V \<Turnstile> K i p\<close>
+proof safe
+  assume \<open>K i p \<in> V\<close>
+  then show \<open>canonical A, V \<Turnstile> K i p\<close>
+    using hyp by auto
+next
+  assume \<open>canonical A, V \<Turnstile> K i p\<close>
+
+  have \<open>\<not> consistent A ({\<^bold>\<not> p} \<union> known V i)\<close>
+  proof
+    assume \<open>consistent A ({\<^bold>\<not> p} \<union> known V i)\<close>
+    then obtain W where W: \<open>{\<^bold>\<not> p} \<union> known V i \<subseteq> W\<close> \<open>consistent A W\<close> \<open>maximal A W\<close>
+      using \<open>consistent A V\<close> maximal_extension by blast
+    then have \<open>canonical A, W \<Turnstile> \<^bold>\<not> p\<close>
+      using hyp \<open>consistent A V\<close> exactly_one_in_maximal by auto
+    moreover have \<open>W \<in> reach A i V\<close> \<open>W \<in> mcss A\<close>
+      using W by simp_all
+    ultimately have \<open>canonical A, V \<Turnstile> \<^bold>\<not> K i p\<close>
+      by auto
+    then show False
+      using \<open>canonical A, V \<Turnstile> K i p\<close> by auto
+  qed
+
+  then obtain W where W:
+    \<open>{\<^bold>\<not> p} \<union> W \<subseteq> {\<^bold>\<not> p} \<union> known V i\<close> \<open>(\<^bold>\<not> p) \<notin> W\<close> \<open>finite W\<close> \<open>\<not> consistent A ({\<^bold>\<not> p} \<union> W)\<close>
+    using exists_finite_inconsistent by metis
+
+  obtain L where L: \<open>set L = W\<close>
+    using \<open>finite W\<close> finite_list by blast
+
+  then have \<open>A \<turnstile> L \<^bold>\<leadsto> p\<close>
+    using W(4) inconsistent_imply by blast
+  then have \<open>A \<turnstile> K i (L \<^bold>\<leadsto> p)\<close>
+    using R2 by fast
+  then have \<open>A \<turnstile> map (K i) L \<^bold>\<leadsto> K i p\<close>
+    using K_distrib_K_imp by fast
+  then have \<open>(map (K i) L \<^bold>\<leadsto> K i p) \<in> V\<close>
+    using deriv_in_maximal prem1 prem2 by blast
+  then show \<open>K i p \<in> V\<close>
+    using L W(1-2)
+  proof (induct L arbitrary: W)
+    case (Cons a L)
+    then have \<open>K i a \<in> V\<close>
+      by auto
+    then have \<open>(map (K i) L \<^bold>\<leadsto> K i p) \<in> V\<close>
+      using Cons(2) \<open>consistent A V\<close> \<open>maximal A V\<close> consequent_in_maximal by auto
+    then show ?case
+      using Cons by auto
+  qed simp
+qed
+
 lemma truth_lemma:
   fixes p :: \<open>('i :: countable) fm\<close>
   assumes \<open>consistent A V\<close> and \<open>maximal A V\<close>
@@ -884,7 +939,7 @@ proof (induct p arbitrary: V)
   proof safe
     assume \<open>\<^bold>\<bottom> \<in> V\<close>
     then have False
-      using \<open>consistent A V\<close> K_imply_head unfolding consistent_def
+      using \<open>consistent A V\<close> K_imply_head unfolding consistent_def 
       by (metis bot.extremum insert_subset list.set(1) list.simps(15))
     then show \<open>canonical A, V \<Turnstile> \<^bold>\<bottom>\<close> ..
   next
@@ -971,55 +1026,7 @@ next
 next
   case (K i p)
   then show ?case
-  proof safe
-    assume \<open>K i p \<in> V\<close>
-    then show \<open>canonical A, V \<Turnstile> K i p\<close>
-      using K.hyps by auto
-  next
-    assume \<open>canonical A, V \<Turnstile> K i p\<close>
-
-    have \<open>\<not> consistent A ({\<^bold>\<not> p} \<union> known V i)\<close>
-    proof
-      assume \<open>consistent A ({\<^bold>\<not> p} \<union> known V i)\<close>
-      then obtain W where W: \<open>{\<^bold>\<not> p} \<union> known V i \<subseteq> W\<close> \<open>consistent A W\<close> \<open>maximal A W\<close>
-        using \<open>consistent A V\<close> maximal_extension by blast
-      then have \<open>canonical A, W \<Turnstile> \<^bold>\<not> p\<close>
-        using K \<open>consistent A V\<close> exactly_one_in_maximal by auto
-      moreover have \<open>W \<in> reach A i V\<close> \<open>W \<in> mcss A\<close>
-        using W by simp_all
-      ultimately have \<open>canonical A, V \<Turnstile> \<^bold>\<not> K i p\<close>
-        by auto
-      then show False
-        using \<open>canonical A, V \<Turnstile> K i p\<close> by auto
-    qed
-
-    then obtain W where W:
-      \<open>{\<^bold>\<not> p} \<union> W \<subseteq> {\<^bold>\<not> p} \<union> known V i\<close> \<open>(\<^bold>\<not> p) \<notin> W\<close> \<open>finite W\<close> \<open>\<not> consistent A ({\<^bold>\<not> p} \<union> W)\<close>
-      using exists_finite_inconsistent by metis
-
-    obtain L where L: \<open>set L = W\<close>
-      using \<open>finite W\<close> finite_list by blast
-
-    then have \<open>A \<turnstile> L \<^bold>\<leadsto> p\<close>
-      using W(4) inconsistent_imply by blast
-    then have \<open>A \<turnstile> K i (L \<^bold>\<leadsto> p)\<close>
-      using R2 by fast
-    then have \<open>A \<turnstile> map (K i) L \<^bold>\<leadsto> K i p\<close>
-      using K_distrib_K_imp by fast
-    then have \<open>(map (K i) L \<^bold>\<leadsto> K i p) \<in> V\<close>
-      using deriv_in_maximal K.prems(1, 2) by blast
-    then show \<open>K i p \<in> V\<close>
-      using L W(1-2)
-    proof (induct L arbitrary: W)
-      case (Cons a L)
-      then have \<open>K i a \<in> V\<close>
-        by auto
-      then have \<open>(map (K i) L \<^bold>\<leadsto> K i p) \<in> V\<close>
-        using Cons(2) \<open>consistent A V\<close> \<open>maximal A V\<close> consequent_in_maximal by auto
-      then show ?case
-        using Cons by auto
-    qed simp
-  qed
+    using truth_lemma_K by blast
 next
   case (Ev g p)
   then show ?case sorry
