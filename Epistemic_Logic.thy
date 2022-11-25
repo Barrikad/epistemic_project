@@ -412,11 +412,9 @@ proof (induct g)
     using Ev_empty_group A1 R1 by force
 next
   case (Cons i g)
-  have 1: \<open>A \<turnstile> 
-    Ev (i # g) p \<^bold>\<and> Ev (i # g) (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> unfold_Ev (i # g) p \<^bold>\<and> unfold_Ev (i # g) (p \<^bold>\<longrightarrow> q)\<close>
+  have 1: \<open>A \<turnstile> Ev (i # g) p \<^bold>\<and> Ev (i # g) (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> unfold_Ev (i # g) p \<^bold>\<and> unfold_Ev (i # g) (p \<^bold>\<longrightarrow> q)\<close>
     using C1a con_imp by blast
-  moreover have \<open>A \<turnstile> 
-    unfold_Ev (i # g) p \<^bold>\<and> unfold_Ev (i # g) (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> unfold_Ev g p \<^bold>\<and> unfold_Ev g (p \<^bold>\<longrightarrow> q)\<close>
+  moreover have \<open>A \<turnstile> unfold_Ev (i # g) p \<^bold>\<and> unfold_Ev (i # g) (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> unfold_Ev g p \<^bold>\<and> unfold_Ev g (p \<^bold>\<longrightarrow> q)\<close>
     using conE2 con_imp by fastforce
   moreover have \<open>A \<turnstile> unfold_Ev g p \<^bold>\<and> unfold_Ev g (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> Ev g p \<^bold>\<and> Ev g (p \<^bold>\<longrightarrow> q)\<close>
     using C1b con_imp by blast
@@ -425,7 +423,7 @@ next
   moreover have \<open>A \<turnstile> Ev g q \<^bold>\<longrightarrow> unfold_Ev g q\<close>
     using C1a .
   ultimately have 2: \<open>A \<turnstile> Ev (i # g) p \<^bold>\<and> Ev (i # g) (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> unfold_Ev g q\<close>
-    using imp_chain by meson
+    using imp_chain by blast
   have \<open>A \<turnstile> unfold_Ev (i # g) p \<^bold>\<and> unfold_Ev (i # g) (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> K i p \<^bold>\<and> K i (p \<^bold>\<longrightarrow> q)\<close>
     using conE1 con_imp by fastforce
   moreover have \<open>A \<turnstile> K i p \<^bold>\<and> K i (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> K i q\<close> 
@@ -503,7 +501,7 @@ proof (induct n rule: less_induct)
       Ev g (Co g p) \<^bold>\<and> Ev g (Co g p \<^bold>\<longrightarrow> Ev_n g p (n' - 1)) \<^bold>\<longrightarrow> Ev g (Ev_n g p (n' - 1))\<close>
       using Ev_A2 by auto
     then have \<open>A \<turnstile> Ev g (Co g p) \<^bold>\<longrightarrow> Ev g (Ev_n g p (n' - 1))\<close>
-      using 1 R1 swap_antecedents con_imp_antecedents by meson
+      using 1 R1 swap_antecedents con_imp_antecedents by blast
     moreover have \<open>Ev g (Ev_n g p (n' - 1)) = Ev_n g p n'\<close> 
       by (metis Ev_n.simps(2) Suc_eq_plus1 add.commute le_add_diff_inverse less.prems)
     ultimately show ?thesis 
@@ -1087,10 +1085,60 @@ lemma truth_lemma_Ev:
   shows \<open>Ev g p \<in> V \<longleftrightarrow> canonical A, V \<Turnstile> Ev g p\<close>
 proof (induct g)
   case Nil
-  then show ?case sorry
+  then show ?case
+  proof safe
+    show \<open>canonical A, V \<Turnstile> Ev [] p\<close> 
+      by simp
+  next
+    show \<open>Ev [] p \<in> V\<close>
+      using Ev_empty_group deriv_in_maximal prem1 prem2 by blast
+  qed
 next
-  case (Cons a g)
-  then show ?case sorry
+  case (Cons a as)
+  then show ?case
+  proof safe
+    assume \<open>Ev (a # as) p \<in> V\<close>
+    then have \<open>Ev as p \<in> V\<close>
+      by (meson EvExt consistent_consequent maximal_def prem1 prem2 set_subset_Cons)
+    then have \<open>Ev [a] p \<in> V\<close>
+      by (metis (mono_tags, lifting) EvExt \<open>Ev (a # as) p \<in> V\<close> bot.extremum consistent_consequent empty_set insert_subset list.set(2) list.set_intros(1) maximal_def prem1 prem2)
+    then have *: \<open>canonical A, V \<Turnstile> Ev as p\<close>
+      using \<open>Ev as p \<in> V\<close> local.Cons by blast
+    then have \<open>Ev [a] p \<^bold>\<longrightarrow> K a p \<in> V\<close>
+      sorry
+    then have \<open>K a p \<in> V\<close>
+      sorry
+    then have \<open>canonical A, V \<Turnstile> K a p\<close>
+      using hyp by fastforce
+    then show \<open>canonical A, V \<Turnstile> Ev (a # as) p\<close>
+      using * by force
+  next
+    assume 1: \<open>canonical A, V \<Turnstile> Ev (a # as) p\<close>
+    then have \<open>canonical A, V \<Turnstile> K a p\<close>
+      by (meson list.set_intros(1) semantics.simps(7))
+    then have 2: \<open>canonical A, V \<Turnstile> Ev as p\<close>
+      using 1 by auto
+    then have \<open>K a p \<in> V\<close>
+      using \<open>canonical A, V \<Turnstile> K a p\<close> hyp prem1 prem2 truth_lemma_K by blast
+    then have \<open>unfold_Ev [a] p \<^bold>\<longrightarrow> Ev [a] p \<in> V\<close>
+      using C1b deriv_in_maximal prem1 prem2 by blast
+    then have evas: \<open>Ev as p \<in> V\<close>
+      using 2 local.Cons by blast
+    then have \<open>unfold_Ev (a # as) p \<^bold>\<longrightarrow> Ev (a # as) p \<in> V\<close>
+      using C1b deriv_in_maximal prem1 prem2 by blast
+    then have \<open>unfold_Ev (a # as) p = K a p \<^bold>\<and> unfold_Ev as p\<close>
+      by force
+    then have \<open>Ev as p \<^bold>\<longrightarrow> unfold_Ev as p \<in> V\<close>
+      using C1a deriv_in_maximal prem1 prem2 by blast
+    then have \<open>unfold_Ev as p \<in> V\<close>
+      using evas consequent_in_maximal prem1 prem2 by blast
+    then have \<open>K a p \<^bold>\<and> unfold_Ev as p \<in> V\<close>
+      by (metis K_imply_head \<open>K a p \<in> V\<close> con_imp_antecedents consequent_in_maximal deriv_in_maximal imply.simps(1) imply.simps(2) prem1 prem2)
+    then have \<open>unfold_Ev (a # as) p \<in> V\<close>
+      by simp
+    then show \<open>Ev (a # as) p \<in> V\<close>
+      using \<open>foldr (\<lambda>i. (\<^bold>\<and>) (K i p)) (a # as) (\<^bold>\<not> \<^bold>\<bottom>) \<^bold>\<longrightarrow> Ev (a # as) p \<in> V\<close> consequent_in_maximal prem1 prem2 by blast
+  qed
 qed
 
 lemma truth_lemma_Ev_n: 
@@ -1227,7 +1275,7 @@ next
       by simp
   next
     assume \<open>canonical A, V \<Turnstile> Co g p\<close> 
-    show \<open>Co g p \<in> V\<close>sorry
+    show \<open>Co g p \<in> V\<close> sorry
   qed
 next
   case (Di g p)
