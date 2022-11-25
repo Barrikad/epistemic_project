@@ -1142,17 +1142,27 @@ lemma truth_lemma_Ev_n:
   assumes prem1: \<open>consistent A V\<close> and prem2: \<open>maximal A V\<close>
   assumes hyp:\<open>\<And> V. consistent A V \<Longrightarrow> maximal A V \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A, V \<Turnstile> p\<close>
   shows \<open>n \<ge> 1 \<Longrightarrow> Ev_n g p n \<in> V \<longleftrightarrow> canonical A, V \<Turnstile> Ev_n g p n\<close>(*might need to strengthen the claim like I did for soundness*)
-proof (induct n rule: less_induct) 
+  using prem1 prem2
+proof (induct n arbitrary: V rule: less_induct)
   case (less n')
   then consider \<open>n' = 1\<close> | \<open>n' > 1\<close> 
     by linarith
   then show ?case 
   proof cases
     case 1
-    then show ?thesis sorry
+    then show ?thesis 
+      using less.prems hyp truth_lemma_Ev by force
   next
     case 2
-    then show ?thesis sorry
+    then have \<open>\<And> V. 
+      consistent A V \<Longrightarrow> maximal A V \<Longrightarrow>
+      (Ev_n g p (n' - 1) \<in> V) = (canonical A, V \<Turnstile> Ev_n g p (n' - 1))\<close>
+      using less by simp
+    then have \<open>(Ev g (Ev_n g p (n' - 1)) \<in> V) = (canonical A, V \<Turnstile> Ev g (Ev_n g p (n' - 1)))\<close>
+      using less truth_lemma_Ev by blast
+    then show ?thesis 
+      by (metis (no_types, lifting) Ev_n.simps(2) less.prems(1) 
+          ordered_cancel_comm_monoid_diff_class.add_diff_inverse plus_1_eq_Suc)
   qed
 qed
 
@@ -1280,6 +1290,14 @@ next
       by simp
   next
     assume \<open>canonical A, V \<Turnstile> Co g p\<close> 
+    then have Co_unfold: \<open>\<forall> n \<ge> 1. canonical A, V \<Turnstile> Ev_n g p n\<close>
+      by simp
+    then have \<open>\<forall> n \<ge> 1. Ev_n g p n \<in> V\<close>
+      by (simp add: "1")
+    (*the two below might not be the right formulas, but we need something like them*)
+    have \<open>\<forall> i \<in> set g. \<not> consistent A ({\<^bold>\<not>p} \<union> known V i)\<close> sorry
+    have \<open>\<forall> i \<in> set g. \<not> consistent A ({\<^bold>\<not>Ev g p} \<union> known V i)\<close>sorry
+
     show \<open>Co g p \<in> V\<close> sorry
   qed
 next
