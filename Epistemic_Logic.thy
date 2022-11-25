@@ -1294,9 +1294,7 @@ next
       by simp
     then have \<open>\<forall> n \<ge> 1. Ev_n g p n \<in> V\<close>
       by (simp add: "1")
-    (*the two below might not be the right formulas, but we need something like them*)
-    have \<open>\<forall> i \<in> set g. \<not> consistent A ({\<^bold>\<not>p} \<union> known V i)\<close> sorry
-    have \<open>\<forall> i \<in> set g. \<not> consistent A ({\<^bold>\<not>Ev g p} \<union> known V i)\<close>sorry
+    have \<open>\<forall> i \<in> set g. \<not> consistent A ({\<^bold>\<not>(p \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> p))} \<union> known V i)\<close> sorry
 
     show \<open>Co g p \<in> V\<close> sorry
   qed
