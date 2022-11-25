@@ -1143,8 +1143,17 @@ lemma truth_lemma_Ev_n:
   assumes hyp:\<open>\<And> V. consistent A V \<Longrightarrow> maximal A V \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A, V \<Turnstile> p\<close>
   shows \<open>n \<ge> 1 \<Longrightarrow> Ev_n g p n \<in> V \<longleftrightarrow> canonical A, V \<Turnstile> Ev_n g p n\<close>(*might need to strengthen the claim like I did for soundness*)
 proof (induct n rule: less_induct) 
-  case less
-  then show ?case sorry
+  case (less n')
+  then consider \<open>n' = 1\<close> | \<open>n' > 1\<close> 
+    by linarith
+  then show ?case 
+  proof cases
+    case 1
+    then show ?thesis sorry
+  next
+    case 2
+    then show ?thesis sorry
+  qed
 qed
 
 lemma truth_lemma:
