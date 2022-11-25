@@ -1080,74 +1080,64 @@ qed
 
 lemma truth_lemma_Ev: 
   fixes p :: \<open>('i :: countable) fm\<close>
-  assumes prem1: \<open>consistent A V\<close> and prem2: \<open>maximal A V\<close>
-  assumes hyp: \<open>\<And> V. consistent A V \<Longrightarrow> maximal A V \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A, V \<Turnstile> p\<close>
+  assumes \<open>consistent A V\<close> \<open>maximal A V\<close>
+  assumes \<open>\<And> V. consistent A V \<Longrightarrow> maximal A V \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A, V \<Turnstile> p\<close>
   shows \<open>Ev g p \<in> V \<longleftrightarrow> canonical A, V \<Turnstile> Ev g p\<close>
 proof (induct g)
   case Nil
-  then show ?case
-  proof safe
-    show \<open>canonical A, V \<Turnstile> Ev [] p\<close> 
-      by simp
-  next
-    show \<open>Ev [] p \<in> V\<close>
-      using Ev_empty_group deriv_in_maximal prem1 prem2 by blast
-  qed
+  thus ?case
+    using Ev_empty_group assms(1,2) deriv_in_maximal by fastforce
 next
   case (Cons a as)
   then show ?case
   proof -
-    assume H: \<open>(Ev as p \<in> V) = (canonical A, V \<Turnstile> Ev as p)\<close>
+    assume \<open>(Ev as p \<in> V) = (canonical A, V \<Turnstile> Ev as p)\<close>
     then have \<open>Ev (a # as) p \<in> V \<Longrightarrow> canonical A, V \<Turnstile> Ev (a # as) p\<close>
     proof -
       assume \<open>Ev (a # as) p \<in> V\<close>
-      then have \<open>Ev as p \<in> V\<close>
-        by (meson EvExt consistent_consequent maximal_def prem1 prem2 set_subset_Cons)
+      hence \<open>Ev as p \<in> V\<close>
+        by (meson EvExt consistent_consequent maximal_def assms(1,2) set_subset_Cons)
+      hence *: \<open>canonical A, V \<Turnstile> Ev as p\<close>
+        using local.Cons by blast
       then have \<open>Ev [a] p \<in> V\<close>
-        by (metis (mono_tags, lifting) EvExt \<open>Ev (a # as) p \<in> V\<close> bot.extremum consistent_consequent empty_set insert_subset list.set(2) list.set_intros(1) maximal_def prem1 prem2)
-      then have *: \<open>canonical A, V \<Turnstile> Ev as p\<close>
-        using \<open>Ev as p \<in> V\<close> local.Cons by blast
-      then have \<open>Ev [a] p \<^bold>\<longrightarrow> unfold_Ev [a] p \<in> V\<close>
-        using C1a deriv_in_maximal prem1 prem2 by blast
-      then have \<open>unfold_Ev [a] p = K a p \<^bold>\<and> \<^bold>\<top>\<close>
+        by (metis (mono_tags, lifting) EvExt \<open>Ev (a # as) p \<in> V\<close> bot.extremum consistent_consequent empty_set insert_subset list.set(2) list.set_intros(1) maximal_def assms(1,2))
+      also have \<open>Ev [a] p \<^bold>\<longrightarrow> unfold_Ev [a] p \<in> V\<close>
+        using C1a deriv_in_maximal assms(1,2) by blast
+      moreover have \<open>unfold_Ev [a] p = K a p \<^bold>\<and> \<^bold>\<top>\<close>
         by simp
-      then have \<open>K a p \<in> V\<close>
-        by (metis \<open>Ev [a] p \<^bold>\<longrightarrow> foldr (\<lambda>i. (\<^bold>\<and>) (K i p)) [a] (\<^bold>\<not> \<^bold>\<bottom>) \<in> V\<close> \<open>Ev [a] p \<in> V\<close> conE1 consequent_in_maximal deriv_in_maximal prem1 prem2)
-      then have \<open>canonical A, V \<Turnstile> K a p\<close>
-        using hyp by fastforce
-      then show \<open>canonical A, V \<Turnstile> Ev (a # as) p\<close>
+      ultimately have \<open>K a p \<in> V\<close>
+        by (metis conE1 consequent_in_maximal deriv_in_maximal assms(1,2))
+      hence \<open>canonical A, V \<Turnstile> K a p\<close>
+        using assms(3) by fastforce
+      thus \<open>canonical A, V \<Turnstile> Ev (a # as) p\<close>
         using * by force
     qed
-    then have \<open>canonical A, V \<Turnstile> Ev (a # as) p \<Longrightarrow> Ev (a # as) p \<in> V\<close>
+    moreover have \<open>canonical A, V \<Turnstile> Ev (a # as) p \<Longrightarrow> Ev (a # as) p \<in> V\<close>
     proof -
-      assume 1: \<open>canonical A, V \<Turnstile> Ev (a # as) p\<close>
-      then have \<open>canonical A, V \<Turnstile> K a p\<close>
-        by (meson list.set_intros(1) semantics.simps(7))
-      then have 2: \<open>canonical A, V \<Turnstile> Ev as p\<close>
-        using 1 by auto
-      then have \<open>K a p \<in> V\<close>
-        using \<open>canonical A, V \<Turnstile> K a p\<close> hyp prem1 prem2 truth_lemma_K by blast
-      then have \<open>unfold_Ev [a] p \<^bold>\<longrightarrow> Ev [a] p \<in> V\<close>
-        using C1b deriv_in_maximal prem1 prem2 by blast
-      then have evas: \<open>Ev as p \<in> V\<close>
-        using 2 local.Cons by blast
-      then have \<open>unfold_Ev (a # as) p \<^bold>\<longrightarrow> Ev (a # as) p \<in> V\<close>
-        using C1b deriv_in_maximal prem1 prem2 by blast
+      assume \<open>canonical A, V \<Turnstile> Ev (a # as) p\<close>
+      hence \<open>canonical A, V \<Turnstile> K a p\<close> and right: \<open>canonical A, V \<Turnstile> Ev as p\<close>
+        by auto
+      hence left_in: \<open>K a p \<in> V\<close>
+        using assms truth_lemma_K by blast
+      with right have right_in: \<open>Ev as p \<in> V\<close>
+        using local.Cons by blast
+      then have unfold_axiom: \<open>unfold_Ev (a # as) p \<^bold>\<longrightarrow> Ev (a # as) p \<in> V\<close>
+        using C1b deriv_in_maximal assms(1,2) by blast
       then have \<open>unfold_Ev (a # as) p = K a p \<^bold>\<and> unfold_Ev as p\<close>
         by force
-      then have \<open>Ev as p \<^bold>\<longrightarrow> unfold_Ev as p \<in> V\<close>
-        using C1a deriv_in_maximal prem1 prem2 by blast
-      then have \<open>unfold_Ev as p \<in> V\<close>
-        using evas consequent_in_maximal prem1 prem2 by blast
-      then have \<open>K a p \<^bold>\<and> unfold_Ev as p \<in> V\<close>
-        by (metis K_imply_head \<open>K a p \<in> V\<close> con_imp_antecedents consequent_in_maximal deriv_in_maximal imply.simps(1) imply.simps(2) prem1 prem2)
-      then have \<open>unfold_Ev (a # as) p \<in> V\<close>
+      hence \<open>Ev as p \<^bold>\<longrightarrow> unfold_Ev as p \<in> V\<close>
+        using C1a deriv_in_maximal assms(1,2) by blast
+      with right_in have \<open>unfold_Ev as p \<in> V\<close>
+        using assms(1,2) consequent_in_maximal by blast
+      with left_in have \<open>K a p \<^bold>\<and> unfold_Ev as p \<in> V\<close>
+        by (metis K_imply_head con_imp_antecedents consequent_in_maximal deriv_in_maximal imply.simps(1,2) assms(1,2))
+      hence \<open>unfold_Ev (a # as) p \<in> V\<close>
         by simp
-      then show \<open>Ev (a # as) p \<in> V\<close>
-        using \<open>foldr (\<lambda>i. (\<^bold>\<and>) (K i p)) (a # as) (\<^bold>\<not> \<^bold>\<bottom>) \<^bold>\<longrightarrow> Ev (a # as) p \<in> V\<close> consequent_in_maximal prem1 prem2 by blast
+      with unfold_axiom show \<open>Ev (a # as) p \<in> V\<close>
+        using consequent_in_maximal assms(1,2) by blast
     qed
-    then show ?case
-      using \<open>Ev (a # as) p \<in> V \<Longrightarrow> canonical A, V \<Turnstile> Ev (a # as) p\<close> by fastforce 
+    ultimately show ?case
+       by fastforce 
   qed
 qed
 
@@ -1262,7 +1252,7 @@ next
     using truth_lemma_K by blast
 next
   case (Ev g p)
-  then show ?case 
+  then show ?case
     using truth_lemma_Ev by blast
 next
   case (Co g p)
