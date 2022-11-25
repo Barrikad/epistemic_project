@@ -1166,6 +1166,9 @@ proof (induct n arbitrary: V rule: less_induct)
   qed
 qed
 
+abbreviation Ev_known where
+  \<open>Ev_known V g \<equiv> {p. Ev g p \<in> V}\<close>
+
 lemma truth_lemma:
   fixes p :: \<open>('i :: countable) fm\<close>
   assumes \<open>consistent A V\<close> and \<open>maximal A V\<close>
@@ -1294,8 +1297,16 @@ next
       by simp
     then have \<open>\<forall> n \<ge> 1. Ev_n g p n \<in> V\<close>
       by (simp add: "1")
-    have \<open>\<forall> i \<in> set g. \<not> consistent A ({\<^bold>\<not>(p \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> p))} \<union> known V i)\<close> sorry
-
+    have \<open>\<not> consistent A ({\<^bold>\<not>(p \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> p))} \<union> Ev_known V g)\<close> sorry
+    then obtain W where W:
+      \<open>{\<^bold>\<not>(p \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> p))} \<union> W \<subseteq> {\<^bold>\<not>(p \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> p))} \<union> Ev_known V g\<close> 
+      \<open>(\<^bold>\<not>(p \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> p))) \<notin> W\<close> \<open>finite W\<close> \<open>\<not> consistent A ({\<^bold>\<not>(p \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> p))} \<union> W)\<close>
+      using exists_finite_inconsistent by metis
+    obtain L where L: \<open>set L = W\<close>
+      using \<open>finite W\<close> finite_list by blast
+    then have \<open>A \<turnstile> L \<^bold>\<leadsto> (p \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> p))\<close>
+      using W(4) inconsistent_imply by blast
+    then have \<open>A \<turnstile> L \<^bold>\<leadsto> Co g p\<close> sorry (*this doesn't work*)
     show \<open>Co g p \<in> V\<close> sorry
   qed
 next
