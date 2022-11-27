@@ -925,15 +925,106 @@ primrec sub_C where
 lemma sub_C_finite: \<open>finite (sub_C p)\<close>
   by (induct p) auto
 
+lemma p_in_sub_C_p: \<open>p \<in> sub_C p\<close>
+  by (induct p) auto
+
 abbreviation sub_C' where \<open>sub_C' p \<equiv> sub_C p \<union> (image Neg (sub_C p))\<close>
 
 lemma sub_C'_finite: \<open>finite (sub_C' p)\<close> 
   by (simp add: sub_C_finite)
 
 definition maximal' where
-  \<open>maximal' A p S \<equiv> \<forall> q \<in> sub_C' p. q \<notin> S \<longrightarrow> \<not> consistent A ({q} \<union> S)\<close>
+  \<open>maximal' A \<phi> S \<equiv> \<forall> p \<in> sub_C' \<phi>. p \<notin> S \<longrightarrow> \<not> consistent A ({p} \<union> S)\<close>
 
+lemma extract_from_list: \<open>x \<in> set xs \<Longrightarrow> \<exists> ys. set (x # ys) = set xs \<and> x \<notin> set ys\<close>
+  by (metis Diff_insert_absorb list.simps(15) mk_disjoint_insert set_removeAll)
 
+lemma consistent_extend: \<open>consistent A V \<Longrightarrow> consistent A ({p} \<union> V) \<or> consistent A ({\<^bold>\<not>p} \<union> V)\<close>
+proof (rule ccontr)
+  assume \<open>consistent A V\<close>
+  assume \<open>\<not> ?thesis\<close>
+  then have \<open>A; ({p} \<union> V) \<turnstile> \<^bold>\<bottom>\<close> \<open>A; ({\<^bold>\<not>p} \<union> V) \<turnstile> \<^bold>\<bottom>\<close>
+    unfolding consistent_def by simp_all
+  then obtain qs rs where qs_rs_def:
+    \<open>set qs \<subseteq> {p} \<union> V\<close> \<open>set rs \<subseteq> {\<^bold>\<not>p} \<union> V\<close> \<open>A \<turnstile> qs \<^bold>\<leadsto> \<^bold>\<bottom>\<close> \<open>A \<turnstile> rs \<^bold>\<leadsto> \<^bold>\<bottom>\<close>
+    by auto
+  then consider \<open>set qs \<subseteq> V \<or> set rs \<subseteq> V\<close> | \<open>p \<in> set qs \<and> \<^bold>\<not>p \<in> set rs\<close> 
+    by auto
+  then show False
+  proof cases
+    case 1
+    then have \<open>\<not> consistent A V\<close>
+      using qs_rs_def consistent_def by blast
+    then show ?thesis 
+      using \<open>consistent A V\<close> ..
+  next
+    case 2
+    then obtain qs' rs' where 
+      \<open>set (p # qs') = set qs\<close> \<open>set (\<^bold>\<not>p # rs') = set rs\<close> \<open>p \<notin> set qs'\<close> \<open>\<^bold>\<not>p \<notin> set rs'\<close>
+      using extract_from_list by meson
+    then have \<open>set qs' \<subseteq> V \<and> set rs' \<subseteq> V\<close> 
+      using qs_rs_def by auto
+    have \<open>A \<turnstile> p # qs' \<^bold>\<leadsto> \<^bold>\<bottom>\<close> \<open>A \<turnstile> \<^bold>\<not>p # rs' \<^bold>\<leadsto> \<^bold>\<bottom>\<close>
+      using \<open>set (p # qs') = set qs\<close> \<open>set (\<^bold>\<not>p # rs') = set rs\<close> qs_rs_def(3,4)
+      by (metis K_imply_weaken order_refl)+
+    then have \<open>A \<turnstile> qs' @ rs' \<^bold>\<leadsto> \<^bold>\<bottom>\<close>
+      by (metis K_ImpI K_imply_head K_right_mp R1 imply.simps(2) imply_append)
+    then have \<open>\<not> consistent A V\<close>
+      using \<open>set qs' \<subseteq> V \<and> set rs' \<subseteq> V\<close> consistent_def
+      by (metis Un_subset_iff set_append)
+    then show ?thesis 
+      using \<open>consistent A V\<close> ..
+  qed
+qed
+
+lemma exactly_one_in_maximal': 
+  assumes \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>p \<in> sub_C' \<phi>\<close>
+  shows \<open>p \<in> V \<longleftrightarrow> \<^bold>\<not> p \<notin> V \<and> (\<forall> p'. \<^bold>\<not>p' = p \<longrightarrow> p' \<notin> V)\<close> 
+proof
+  assume \<open>p \<in> V\<close>
+  then show \<open>\<^bold>\<not> p \<notin> V \<and> (\<forall> p'. \<^bold>\<not>p' = p \<longrightarrow> p' \<notin> V)\<close>
+    using assms K_mp unfolding consistent_def maximal_def
+    by (metis empty_subsetI insert_subset list.set(1) list.simps(15))
+next
+  assume a: \<open>\<^bold>\<not> p \<notin> V \<and> (\<forall> p'. \<^bold>\<not>p' = p \<longrightarrow> p' \<notin> V)\<close>
+  from assms(3) consider \<open>\<^bold>\<not>p \<in> sub_C' \<phi>\<close> | \<open>\<^bold>\<not>p \<notin> sub_C' \<phi>\<close>
+    by blast
+  then show \<open>p \<in> V\<close>
+  proof cases
+    case 1
+    then have \<open>\<^bold>\<not>p \<notin> V\<close>
+      using a by simp
+    moreover have \<open>\<^bold>\<not>p \<in> sub_C' \<phi>\<close>
+      using 1 assms(3) by blast
+    ultimately have \<open>\<not> consistent A ({\<^bold>\<not>p} \<union> V)\<close>
+      using assms unfolding maximal'_def by blast
+    then have \<open>consistent A ({p} \<union> V)\<close>  
+      using \<open>consistent A V\<close> consistent_extend by auto
+    then show ?thesis
+      using assms maximal'_def by blast
+  next
+    case 2
+    then obtain p' where \<open>\<^bold>\<not>p' = p\<close> 
+      using assms(3) by auto
+    then have \<open>p' \<in> sub_C' \<phi>\<close>
+    proof-
+      have \<open>\<^bold>\<not>p' \<in> sub_C' \<phi> \<Longrightarrow> p' \<in> sub_C \<phi>\<close> 
+      proof (induct \<phi>)
+        case (Imp \<phi>1 \<phi>2)
+        then show ?case 
+          using Un_iff fm.inject(4) p_in_sub_C_p by fastforce
+      qed auto
+      then show ?thesis
+        using \<open>\<^bold>\<not> p' = p\<close> assms(3) by blast
+    qed
+    moreover have \<open>p' \<notin> V\<close>
+      using a \<open>\<^bold>\<not>p' = p\<close> by simp
+    ultimately have \<open>\<not> consistent A ({p'} \<union> V)\<close>
+      using assms(2) maximal'_def by auto
+    then show ?thesis 
+      using \<open>\<^bold>\<not> p' = p\<close> assms(1) assms(2) assms(3) consistent_extend maximal'_def by blast
+  qed
+qed
 
 subsection \<open>Lindenbaum extension\<close>
 
