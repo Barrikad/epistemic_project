@@ -1161,6 +1161,12 @@ primrec extend' :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm \<Right
 definition Extend' :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm \<Rightarrow> 'i fm set \<Rightarrow> (nat \<Rightarrow> 'i fm) \<Rightarrow> 'i fm set\<close> where
   \<open>Extend' A \<phi> S f \<equiv> \<Union>n. extend' A \<phi> S f n\<close>
 
+lemma extend'_subset_sub_C: \<open>S \<subseteq> sub_C' \<phi> \<Longrightarrow> extend' A \<phi> S f n \<subseteq> sub_C' \<phi>\<close>
+  by (induct n) auto
+
+lemma Extend'_subset_sub_C: \<open>S \<subseteq> sub_C' \<phi> \<Longrightarrow> Extend' A \<phi> S f \<subseteq> sub_C' \<phi>\<close>
+  using extend'_subset_sub_C unfolding Extend'_def by blast
+
 lemma Extend'_subset: \<open>S \<subseteq> Extend' A \<phi> S f\<close>
   unfolding Extend'_def using Union_upper extend'.simps(1) range_eqI
   by metis
@@ -1212,8 +1218,8 @@ qed
 
 lemma maximal_extension':
   fixes V :: \<open>('i :: countable) fm set\<close>
-  assumes \<open>consistent A V\<close>
-  obtains W where \<open>V \<subseteq> W\<close> \<open>consistent A W\<close> \<open>maximal' A \<phi> W\<close>
+  assumes \<open>V \<subseteq> sub_C' \<phi>\<close> \<open>consistent A V\<close>
+  obtains W where \<open>V \<subseteq> W\<close> \<open>W \<subseteq> sub_C' \<phi>\<close> \<open>consistent A W\<close> \<open>maximal' A \<phi> W\<close>
 proof -
   let ?W = \<open>Extend' A \<phi> V from_nat\<close>
   have \<open>V \<subseteq> ?W\<close>
@@ -1222,6 +1228,8 @@ proof -
     using assms consistent_Extend' by blast
   moreover have \<open>maximal' A \<phi> ?W\<close>
     using assms maximal_Extend' surj_from_nat by blast
+  moreover have \<open>?W \<subseteq> sub_C' \<phi>\<close> 
+    using assms Extend'_subset_sub_C by blast
   ultimately show ?thesis
     using that by blast
 qed
@@ -1237,37 +1245,39 @@ abbreviation known :: \<open>'i fm set \<Rightarrow> 'i \<Rightarrow> 'i fm set\
 abbreviation reach :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i \<Rightarrow> 'i fm set \<Rightarrow> 'i fm set set\<close> where
   \<open>reach A i V \<equiv> {W. known V i \<subseteq> W}\<close>
 
-abbreviation mcss :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm set set\<close> where
-  \<open>mcss A \<equiv> {W. consistent A W \<and> maximal A W}\<close>
+abbreviation mcss :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm \<Rightarrow> 'i fm set set\<close> where
+  \<open>mcss A \<phi> \<equiv> {W. W \<subseteq> sub_C' \<phi> \<and> consistent A W \<and> maximal' A \<phi> W}\<close>
 
-abbreviation canonical :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> ('i, 'i fm set) kripke\<close> where
-  \<open>canonical A \<equiv> \<lparr>\<W> = mcss A, \<K> = reach A, \<pi> = pi\<rparr>\<close>
+abbreviation canonical :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm \<Rightarrow> ('i, 'i fm set) kripke\<close> where
+  \<open>canonical A \<phi> \<equiv> \<lparr>\<W> = mcss A \<phi>, \<K> = reach A, \<pi> = pi\<rparr>\<close>
 
 lemma truth_lemma_K: 
   fixes p :: \<open>('i :: countable) fm\<close>
-  assumes prem1: \<open>consistent A V\<close> and prem2: \<open>maximal A V\<close>
-  assumes hyp:\<open>\<And> V. consistent A V \<Longrightarrow> maximal A V \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A, V \<Turnstile> p\<close>
-  shows \<open>K i p \<in> V \<longleftrightarrow> canonical A, V \<Turnstile> K i p\<close>
+  assumes prems: \<open>V \<subseteq> sub_C' \<phi>\<close> \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>p \<in> sub_C' \<phi>\<close>
+  assumes hyp:\<open>\<And> V. V \<subseteq> sub_C' \<phi> \<Longrightarrow> consistent A V \<Longrightarrow> maximal' A \<phi> V \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> p\<close>
+  shows \<open>K i p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> K i p\<close>
 proof safe
   assume \<open>K i p \<in> V\<close>
-  then show \<open>canonical A, V \<Turnstile> K i p\<close>
+  then show \<open>canonical A \<phi>, V \<Turnstile> K i p\<close>
     using hyp by auto
 next
-  assume \<open>canonical A, V \<Turnstile> K i p\<close>
+  assume \<open>canonical A \<phi>, V \<Turnstile> K i p\<close>
 
   have \<open>\<not> consistent A ({\<^bold>\<not> p} \<union> known V i)\<close>
-  proof
+  proof(*
     assume \<open>consistent A ({\<^bold>\<not> p} \<union> known V i)\<close>
-    then obtain W where W: \<open>{\<^bold>\<not> p} \<union> known V i \<subseteq> W\<close> \<open>consistent A W\<close> \<open>maximal A W\<close>
-      using \<open>consistent A V\<close> maximal_extension by blast
-    then have \<open>canonical A, W \<Turnstile> \<^bold>\<not> p\<close>
-      using hyp \<open>consistent A V\<close> exactly_one_in_maximal by auto
+    moreover have \<open>{\<^bold>\<not> p} \<union> known V i \<subseteq> sub_C' \<phi>\<close> sorry
+      ultimately obtain W where W: \<open>{\<^bold>\<not> p} \<union> known V i \<subseteq> W\<close> \<open>W \<subseteq> sub_C' \<phi>\<close> \<open>consistent A W\<close> \<open>maximal' A \<phi> W\<close>
+      using \<open>consistent A V\<close> maximal_extension'
+    then have \<open>canonical A \<phi>, W \<Turnstile> \<^bold>\<not> p\<close>
+      using hyp \<open>consistent A V\<close> exactly_one_in_maximal' prems(4) 
     moreover have \<open>W \<in> reach A i V\<close> \<open>W \<in> mcss A\<close>
       using W by simp_all
     ultimately have \<open>canonical A, V \<Turnstile> \<^bold>\<not> K i p\<close>
       by auto
     then show False
-      using \<open>canonical A, V \<Turnstile> K i p\<close> by auto
+      using \<open>canonical A, V \<Turnstile> K i p\<close> by auto*)
+    show False sorry
   qed
 
   then obtain W where W:
