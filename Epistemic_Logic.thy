@@ -1250,7 +1250,7 @@ abbreviation mcss :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm \<Rig
 
 abbreviation canonical :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm \<Rightarrow> ('i, 'i fm set) kripke\<close> where
   \<open>canonical A \<phi> \<equiv> \<lparr>\<W> = mcss A \<phi>, \<K> = reach A, \<pi> = pi\<rparr>\<close>
-
+(*
 lemma truth_lemma_K: 
   fixes p :: \<open>('i :: countable) fm\<close>
   assumes prems: \<open>V \<subseteq> sub_C' \<phi>\<close> \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>p \<in> sub_C' \<phi>\<close>
@@ -1264,19 +1264,7 @@ next
   assume \<open>canonical A \<phi>, V \<Turnstile> K i p\<close>
 
   have \<open>\<not> consistent A ({\<^bold>\<not> p} \<union> known V i)\<close>
-  proof(*
-    assume \<open>consistent A ({\<^bold>\<not> p} \<union> known V i)\<close>
-    moreover have \<open>{\<^bold>\<not> p} \<union> known V i \<subseteq> sub_C' \<phi>\<close> sorry
-      ultimately obtain W where W: \<open>{\<^bold>\<not> p} \<union> known V i \<subseteq> W\<close> \<open>W \<subseteq> sub_C' \<phi>\<close> \<open>consistent A W\<close> \<open>maximal' A \<phi> W\<close>
-      using \<open>consistent A V\<close> maximal_extension'
-    then have \<open>canonical A \<phi>, W \<Turnstile> \<^bold>\<not> p\<close>
-      using hyp \<open>consistent A V\<close> exactly_one_in_maximal' prems(4) 
-    moreover have \<open>W \<in> reach A i V\<close> \<open>W \<in> mcss A\<close>
-      using W by simp_all
-    ultimately have \<open>canonical A, V \<Turnstile> \<^bold>\<not> K i p\<close>
-      by auto
-    then show False
-      using \<open>canonical A, V \<Turnstile> K i p\<close> by auto*)
+  proof
     show False sorry
   qed
 
@@ -1294,7 +1282,7 @@ next
   then have \<open>A \<turnstile> map (K i) L \<^bold>\<leadsto> K i p\<close>
     using K_distrib_K_imp by fast
   then have \<open>(map (K i) L \<^bold>\<leadsto> K i p) \<in> V\<close>
-    using deriv_in_maximal prem1 prem2 by blast
+    using deriv_in_maximal prems by blast
   then show \<open>K i p \<in> V\<close>
     using L W(1-2)
   proof (induct L arbitrary: W)
@@ -1395,14 +1383,33 @@ proof (induct n arbitrary: V rule: less_induct)
           ordered_cancel_comm_monoid_diff_class.add_diff_inverse plus_1_eq_Suc)
   qed
 qed
+*)
 
-abbreviation Ev_known where
-  \<open>Ev_known V g \<equiv> {p. Ev g p \<in> V}\<close>
+lemma DisE_sub_C': \<open>p \<^bold>\<or> q \<in> sub_C' \<phi> \<Longrightarrow> p \<in> sub_C' \<phi> \<and> q \<in> sub_C' \<phi>\<close>
+proof (induct \<phi>)
+  case (Dis \<phi>1 \<phi>2)
+  consider \<open>p = \<phi>1 \<and> q = \<phi>2\<close> | \<open>\<not>(p = \<phi>1 \<and> q = \<phi>2)\<close>
+    by auto
+  then show ?case 
+  proof cases
+    case 1
+    then show ?thesis
+      by (simp add: p_in_sub_C_p)
+  next
+    case 2
+    moreover have \<open>p \<^bold>\<or> q \<in> sub_C (\<phi>1 \<^bold>\<or> \<phi>2)\<close>
+      using Dis by auto
+    ultimately have \<open>p \<^bold>\<or> q \<in> sub_C \<phi>1 \<or> p \<^bold>\<or> q \<in> sub_C \<phi>2\<close> 
+      by auto
+    then show ?thesis 
+      using Dis by auto
+  qed
+qed auto
 
 lemma truth_lemma:
   fixes p :: \<open>('i :: countable) fm\<close>
-  assumes \<open>consistent A V\<close> and \<open>maximal A V\<close>
-  shows \<open>p \<in> V \<longleftrightarrow> canonical A, V \<Turnstile> p\<close>
+  assumes \<open>p \<in> sub_C' \<phi>\<close> and \<open>V \<subseteq> sub_C' \<phi>\<close> and \<open>consistent A V\<close> and \<open>maximal' A \<phi> V\<close>
+  shows \<open>p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> p\<close>
   using assms
 proof (induct p arbitrary: V)
   case FF
@@ -1412,9 +1419,9 @@ proof (induct p arbitrary: V)
     then have False
       using \<open>consistent A V\<close> K_imply_head unfolding consistent_def 
       by (metis bot.extremum insert_subset list.set(1) list.simps(15))
-    then show \<open>canonical A, V \<Turnstile> \<^bold>\<bottom>\<close> ..
+    then show \<open>canonical A \<phi>, V \<Turnstile> \<^bold>\<bottom>\<close> ..
   next
-    assume \<open>canonical A, V \<Turnstile> \<^bold>\<bottom>\<close>
+    assume \<open>canonical A \<phi>, V \<Turnstile> \<^bold>\<bottom>\<close>
     then show \<open>\<^bold>\<bottom> \<in> V\<close>
       by simp
   qed
@@ -1426,23 +1433,37 @@ next
   case (Dis p q)
   then show ?case
   proof safe
-    assume \<open>(p \<^bold>\<or> q) \<in> V\<close>
-    then have \<open>consistent A ({p} \<union> V) \<or> consistent A ({q} \<union> V)\<close>
+    assume \<open>p \<^bold>\<or> q \<in> V\<close>
+    then have p_or_q_cons: \<open>consistent A ({p} \<union> V) \<or> consistent A ({q} \<union> V)\<close>
       using \<open>consistent A V\<close> consistent_disjuncts by blast
-    then have \<open>p \<in> V \<or> q \<in> V\<close>
-      using \<open>maximal A V\<close> unfolding maximal_def by fast
-    then show \<open>canonical A, V \<Turnstile> (p \<^bold>\<or> q)\<close>
-      using Dis by simp
+    have \<open>p \<in> V \<or> q \<in> V\<close>
+    proof (rule ccontr)
+      assume \<open>\<not> (p \<in> V \<or> q \<in> V)\<close>
+      from \<open>p \<^bold>\<or> q \<in> V\<close> have \<open>p \<^bold>\<or> q \<in> sub_C' \<phi>\<close>
+        using Dis.prems(1) by auto
+      then have \<open>p \<in> sub_C' \<phi> \<and> q \<in> sub_C' \<phi>\<close>
+        using DisE_sub_C' by auto
+      from \<open>\<not> (p \<in> V \<or> q \<in> V)\<close> this have \<open>\<not>(consistent A ({p} \<union> V) \<or> consistent A ({q} \<union> V))\<close>
+        using \<open>maximal' A \<phi> V\<close> unfolding maximal'_def by meson
+      then show False
+        using p_or_q_cons ..
+    qed
+    then have \<open>p \<in> sub_C' \<phi> \<or> q \<in> sub_C' \<phi>\<close> 
+      using Dis.prems(2) by blast
+    then show \<open>canonical A \<phi>, V \<Turnstile> (p \<^bold>\<or> q)\<close>
+      using Dis by (metis (mono_tags, lifting) \<open>p \<in> V \<or> q \<in> V\<close> semantics.simps(3) subsetD)
   next
-    assume \<open>canonical A, V \<Turnstile> (p \<^bold>\<or> q)\<close>
-    then consider \<open>canonical A, V \<Turnstile> p\<close> | \<open>canonical A, V \<Turnstile> q\<close>
-      by auto
-    then have \<open>p \<in> V \<or> q \<in> V\<close>
-      using Dis by auto
+    assume a: \<open>canonical A \<phi>, V \<Turnstile> (p \<^bold>\<or> q)\<close>
+    have \<open>p \<in> sub_C' \<phi> \<and> q \<in> sub_C' \<phi>\<close>
+      using Dis.prems(1) DisE_sub_C' by auto 
+    moreover consider \<open>canonical A \<phi>, V \<Turnstile> p\<close> | \<open>canonical A \<phi>, V \<Turnstile> q\<close>
+      using a by auto
+    ultimately have \<open>p \<in> V \<or> q \<in> V\<close>
+      using Dis by meson
     moreover have \<open>A \<turnstile> p \<^bold>\<longrightarrow> p \<^bold>\<or> q\<close> \<open>A \<turnstile> q \<^bold>\<longrightarrow> p \<^bold>\<or> q\<close>
       by (auto simp: A1)
     ultimately show \<open>(p \<^bold>\<or> q) \<in> V\<close>
-      using Dis.prems deriv_in_maximal consequent_in_maximal by blast
+      using Dis.prems by (metis consistent_consequent maximal'_def)
   qed
 next
   case (Con p q)
