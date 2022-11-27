@@ -907,6 +907,34 @@ theorem mcs_properties:
     and \<open>p \<in> V \<Longrightarrow> (p \<^bold>\<longrightarrow> q) \<in> V \<Longrightarrow> q \<in> V\<close>
   using assms deriv_in_maximal exactly_one_in_maximal consequent_in_maximal by blast+
 
+subsection \<open>sub_C^+ sets\<close>
+
+primrec sub_C where
+  \<open>sub_C \<^bold>\<bottom> = {\<^bold>\<bottom>}\<close> |
+  \<open>sub_C (Pro a) = {Pro a}\<close> |
+  \<open>sub_C (p \<^bold>\<or> q) = insert (p \<^bold>\<or> q) (sub_C p \<union> sub_C q)\<close> |
+  \<open>sub_C (p \<^bold>\<and> q) = insert (p \<^bold>\<and> q) (sub_C p \<union> sub_C q)\<close> |
+  \<open>sub_C (p \<^bold>\<longrightarrow> q) = insert (p \<^bold>\<longrightarrow> q) (sub_C p \<union> sub_C q)\<close> |
+  \<open>sub_C (K i p) = insert (K i p) (sub_C p)\<close> |
+  \<open>sub_C (Ev g p) = {K i p | i. i \<in> set g} \<union> insert (Ev g p) (sub_C p)\<close> |
+  \<open>sub_C (Co g p) = 
+    {K i (p \<^bold>\<and> Co g p) | i. i \<in> set g} \<union> 
+    {Ev g (p \<^bold>\<and> Co g p), p \<^bold>\<and> Co g p, Co g p} \<union> sub_C p\<close> |
+  \<open>sub_C (Di g p) = insert (Di g p) (sub_C p)\<close>
+
+lemma sub_C_finite: \<open>finite (sub_C p)\<close>
+  by (induct p) auto
+
+abbreviation sub_C' where \<open>sub_C' p \<equiv> sub_C p \<union> (image Neg (sub_C p))\<close>
+
+lemma sub_C'_finite: \<open>finite (sub_C' p)\<close> 
+  by (simp add: sub_C_finite)
+
+definition maximal' where
+  \<open>maximal' A p S \<equiv> \<forall> q \<in> sub_C' p. q \<notin> S \<longrightarrow> \<not> consistent A ({q} \<union> S)\<close>
+
+
+
 subsection \<open>Lindenbaum extension\<close>
 
 instantiation fm :: (countable) countable begin
