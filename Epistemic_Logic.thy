@@ -1149,6 +1149,83 @@ proof -
     using that by blast
 qed
 
+subsection \<open>Lindenbaum extension sub_C^+\<close>
+
+primrec extend' :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm \<Rightarrow> 'i fm set \<Rightarrow> (nat \<Rightarrow> 'i fm) \<Rightarrow> nat \<Rightarrow> 'i fm set\<close> where
+  \<open>extend' A \<phi> S f 0 = S\<close>
+| \<open>extend' A \<phi> S f (Suc n) =
+    (if f n \<in> sub_C' \<phi> \<and> consistent A ({f n} \<union> extend' A \<phi> S f n)
+     then {f n} \<union> extend' A \<phi> S f n
+     else extend' A \<phi> S f n)\<close>
+
+definition Extend' :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm \<Rightarrow> 'i fm set \<Rightarrow> (nat \<Rightarrow> 'i fm) \<Rightarrow> 'i fm set\<close> where
+  \<open>Extend' A \<phi> S f \<equiv> \<Union>n. extend' A \<phi> S f n\<close>
+
+lemma Extend'_subset: \<open>S \<subseteq> Extend' A \<phi> S f\<close>
+  unfolding Extend'_def using Union_upper extend'.simps(1) range_eqI
+  by metis
+
+lemma extend'_bound: \<open>(\<Union>n \<le> m. extend' A \<phi> S f n) = extend' A \<phi> S f m\<close>
+  by (induct m) (simp_all add: atMost_Suc)
+
+lemma consistent_extend': \<open>consistent A S \<Longrightarrow> consistent A (extend' A \<phi> S f n)\<close>
+  by (induct n) simp_all
+
+lemma consistent_Extend':
+  assumes \<open>consistent A S\<close>
+  shows \<open>consistent A (Extend' A \<phi> S f)\<close>
+  unfolding Extend'_def
+proof (rule ccontr)
+  assume \<open>\<not> consistent A (\<Union>n. extend' A \<phi> S f n)\<close>
+  then obtain S' where \<open>A \<turnstile> S' \<^bold>\<leadsto> \<^bold>\<bottom>\<close> \<open>set S' \<subseteq> (\<Union>n. extend' A \<phi> S f n)\<close>
+    unfolding consistent_def by blast
+  then obtain m where \<open>set S' \<subseteq> (\<Union>n \<le> m. extend' A \<phi> S f n)\<close>
+    using UN_finite_bound by (metis List.finite_set)
+  then have \<open>set S' \<subseteq> extend' A \<phi> S f m\<close>
+    using extend'_bound by blast
+  moreover have \<open>consistent A (extend' A \<phi> S f m)\<close>
+    using assms consistent_extend' by blast
+  ultimately show False
+    unfolding consistent_def using \<open>A \<turnstile> S' \<^bold>\<leadsto> \<^bold>\<bottom>\<close> by blast
+qed
+
+lemma maximal_Extend':
+  assumes \<open>surj f\<close>
+  shows \<open>maximal' A \<phi> (Extend' A \<phi> S f)\<close>
+proof (rule ccontr)
+  assume \<open>\<not> maximal' A \<phi> (Extend' A \<phi> S f)\<close>
+  then obtain p where \<open>p \<in> sub_C' \<phi>\<close> \<open>p \<notin> Extend' A \<phi> S f\<close> \<open>consistent A ({p} \<union> Extend' A \<phi> S f)\<close>
+    unfolding maximal'_def using assms by blast
+  obtain k where n: \<open>f k = p\<close>
+    using \<open>surj f\<close> unfolding surj_def by metis
+  then have \<open>p \<notin> extend' A \<phi> S f (Suc k)\<close>
+    using \<open>p \<notin> Extend' A \<phi> S f\<close> unfolding Extend'_def by blast
+  then have \<open>\<not> consistent A ({p} \<union> extend' A \<phi> S f k)\<close>
+    using n \<open>p \<in> sub_C' \<phi>\<close> by auto
+  moreover have \<open>{p} \<union> extend' A \<phi> S f k \<subseteq> {p} \<union> Extend' A \<phi> S f\<close>
+    unfolding Extend'_def by blast
+  ultimately have \<open>\<not> consistent A ({p} \<union> Extend' A \<phi> S f)\<close>
+    unfolding consistent_def by fastforce
+  then show False
+    using \<open>consistent A ({p} \<union> Extend' A \<phi> S f)\<close> by blast
+qed
+
+lemma maximal_extension':
+  fixes V :: \<open>('i :: countable) fm set\<close>
+  assumes \<open>consistent A V\<close>
+  obtains W where \<open>V \<subseteq> W\<close> \<open>consistent A W\<close> \<open>maximal' A \<phi> W\<close>
+proof -
+  let ?W = \<open>Extend' A \<phi> V from_nat\<close>
+  have \<open>V \<subseteq> ?W\<close>
+    using Extend'_subset by blast
+  moreover have \<open>consistent A ?W\<close>
+    using assms consistent_Extend' by blast
+  moreover have \<open>maximal' A \<phi> ?W\<close>
+    using assms maximal_Extend' surj_from_nat by blast
+  ultimately show ?thesis
+    using that by blast
+qed
+
 subsection \<open>Canonical model\<close>
 
 abbreviation pi :: \<open>'i fm set \<Rightarrow> id \<Rightarrow> bool\<close> where
