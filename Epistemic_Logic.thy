@@ -939,7 +939,7 @@ definition maximal' where
 lemma extract_from_list: \<open>x \<in> set xs \<Longrightarrow> \<exists> ys. set (x # ys) = set xs \<and> x \<notin> set ys\<close>
   by (metis Diff_insert_absorb list.simps(15) mk_disjoint_insert set_removeAll)
 
-lemma consistent_extend: \<open>consistent A V \<Longrightarrow> consistent A ({p} \<union> V) \<or> consistent A ({\<^bold>\<not>p} \<union> V)\<close>
+lemma consistent_extend_by_p: \<open>consistent A V \<Longrightarrow> consistent A ({p} \<union> V) \<or> consistent A ({\<^bold>\<not>p} \<union> V)\<close>
 proof (rule ccontr)
   assume \<open>consistent A V\<close>
   assume \<open>\<not> ?thesis\<close>
@@ -999,7 +999,7 @@ next
     ultimately have \<open>\<not> consistent A ({\<^bold>\<not>p} \<union> V)\<close>
       using assms unfolding maximal'_def by blast
     then have \<open>consistent A ({p} \<union> V)\<close>  
-      using \<open>consistent A V\<close> consistent_extend by auto
+      using \<open>consistent A V\<close> consistent_extend_by_p by auto
     then show ?thesis
       using assms maximal'_def by blast
   next
@@ -1022,8 +1022,32 @@ next
     ultimately have \<open>\<not> consistent A ({p'} \<union> V)\<close>
       using assms(2) maximal'_def by auto
     then show ?thesis 
-      using \<open>\<^bold>\<not> p' = p\<close> assms(1) assms(2) assms(3) consistent_extend maximal'_def by blast
+      using \<open>\<^bold>\<not> p' = p\<close> assms(1) assms(2) assms(3) consistent_extend_by_p maximal'_def by blast
   qed
+qed
+
+lemma deriv_in_maximal': 
+  assumes \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>p \<in> sub_C' \<phi>\<close> \<open>A \<turnstile> p\<close>
+  shows \<open>p \<in> V\<close>
+  using assms R1 inconsistent_subset unfolding consistent_def maximal'_def
+  by (metis imply.simps(2))
+
+lemma consequent_in_maximal':
+  assumes \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>set ps \<subseteq> sub_C' \<phi>\<close> \<open>q \<in> sub_C' \<phi>\<close> \<open>set ps \<subseteq> V\<close>
+    \<open>A \<turnstile> ps \<^bold>\<leadsto> q\<close>
+  shows \<open>q \<in> V\<close>
+proof-
+  have \<open>\<forall>V'. set V' \<subseteq> V \<longrightarrow> \<not> (A \<turnstile> ps @ V' \<^bold>\<leadsto> \<^bold>\<bottom>)\<close>
+    using \<open>consistent A V\<close> \<open>set ps \<subseteq> V\<close> unfolding consistent_def 
+    by simp
+  have \<open>\<forall>V'. set V' \<subseteq> V \<longrightarrow> \<not> (A \<turnstile> ps @ (ps \<^bold>\<leadsto> q) # V' \<^bold>\<leadsto> \<^bold>\<bottom>)\<close>
+    by (metis K_imply_weaken K_right_mp \<open>\<forall>V'. set V' \<subseteq> V \<longrightarrow> \<not> A \<turnstile> ps @ V' \<^bold>\<leadsto> \<^bold>\<bottom>\<close> assms(6) imply.simps(2) imply_append inf_sup_ord(4) set_append)
+  then have \<open>\<forall>V'. set V' \<subseteq> V \<longrightarrow> \<not> (A \<turnstile> q # V' \<^bold>\<leadsto> \<^bold>\<bottom>)\<close> 
+    by (metis K_imply_head K_right_mp R1 \<open>\<forall>V'. set V' \<subseteq> V \<longrightarrow> \<not> A \<turnstile> ps @ V' \<^bold>\<leadsto> \<^bold>\<bottom>\<close> assms(6) imply.simps(2) imply_append)
+  then have \<open>consistent A ({q} \<union> V)\<close>
+    using \<open>consistent A V\<close> inconsistent_subset by metis
+  then show ?thesis
+    using \<open>maximal' A \<phi> V\<close> \<open>q \<in> sub_C' \<phi>\<close> maximal'_def by blast
 qed
 
 subsection \<open>Lindenbaum extension\<close>
