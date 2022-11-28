@@ -1385,26 +1385,33 @@ proof (induct n arbitrary: V rule: less_induct)
 qed
 *)
 
-lemma DisE_sub_C': \<open>p \<^bold>\<or> q \<in> sub_C' \<phi> \<Longrightarrow> p \<in> sub_C' \<phi> \<and> q \<in> sub_C' \<phi>\<close>
-proof (induct \<phi>)
-  case (Dis \<phi>1 \<phi>2)
-  consider \<open>p = \<phi>1 \<and> q = \<phi>2\<close> | \<open>\<not>(p = \<phi>1 \<and> q = \<phi>2)\<close>
+lemma sub_C_transitive: \<open>p \<in> sub_C q \<Longrightarrow> q \<in> sub_C r \<Longrightarrow> p \<in> sub_C r\<close>
+  by (induct r, induct q, auto)
+
+lemma sub_sub_C': \<open>p \<in> sub_C' \<phi> \<Longrightarrow> q \<in> sub_C p \<Longrightarrow> q = \<^bold>\<bottom> \<or> q \<in> sub_C' \<phi>\<close>
+proof-
+  assume \<open>q \<in> sub_C p\<close>
+  assume \<open>p \<in> sub_C' \<phi>\<close>
+  then consider \<open>p \<in> sub_C \<phi>\<close> | \<open>p \<in> image Neg (sub_C \<phi>)\<close>
     by auto
-  then show ?case 
+  then show ?thesis
   proof cases
     case 1
+    from this \<open>q \<in> sub_C p\<close> have \<open>q \<in> sub_C \<phi>\<close>
+      using sub_C_transitive by auto
     then show ?thesis
-      by (simp add: p_in_sub_C_p)
+      by simp
   next
     case 2
-    moreover have \<open>p \<^bold>\<or> q \<in> sub_C (\<phi>1 \<^bold>\<or> \<phi>2)\<close>
-      using Dis by auto
-    ultimately have \<open>p \<^bold>\<or> q \<in> sub_C \<phi>1 \<or> p \<^bold>\<or> q \<in> sub_C \<phi>2\<close> 
+    then obtain p' where \<open>p = \<^bold>\<not>p'\<close> \<open>p' \<in> sub_C \<phi>\<close>
       by auto
-    then show ?thesis 
-      using Dis by auto
-  qed
-qed auto
+    moreover have \<open>q \<in> sub_C p \<longrightarrow> p = \<^bold>\<not>p' \<longrightarrow> q \<in> sub_C p' \<or> q = p \<or> q = \<^bold>\<bottom>\<close> 
+      by (cases p) auto
+    ultimately show ?thesis 
+      by (metis UnI1 \<open>p \<in> sub_C' \<phi>\<close> \<open>q \<in> sub_C p\<close> sub_C_transitive)
+  qed 
+qed
+
 
 lemma truth_lemma:
   fixes p :: \<open>('i :: countable) fm\<close>
@@ -1431,7 +1438,15 @@ next
     by simp
 next
   case (Dis p q)
-  then show ?case
+  then have \<open>p \<^bold>\<or> q \<in> sub_C \<phi>\<close> 
+    by auto
+  moreover have \<open>p \<in> sub_C (p \<^bold>\<or> q) \<and> q \<in> sub_C (p \<^bold>\<or> q)\<close> 
+    by (simp add: p_in_sub_C_p)
+  ultimately have \<open>p \<in> sub_C \<phi> \<and> q \<in> sub_C \<phi>\<close>
+    using sub_C_transitive by blast
+  then have p_q_in_phi: \<open>p \<in> sub_C' \<phi> \<and> q \<in> sub_C' \<phi>\<close>
+    by simp
+  from Dis show ?case
   proof safe
     assume \<open>p \<^bold>\<or> q \<in> V\<close>
     then have p_or_q_cons: \<open>consistent A ({p} \<union> V) \<or> consistent A ({q} \<union> V)\<close>
@@ -1439,11 +1454,7 @@ next
     have \<open>p \<in> V \<or> q \<in> V\<close>
     proof (rule ccontr)
       assume \<open>\<not> (p \<in> V \<or> q \<in> V)\<close>
-      from \<open>p \<^bold>\<or> q \<in> V\<close> have \<open>p \<^bold>\<or> q \<in> sub_C' \<phi>\<close>
-        using Dis.prems(1) by auto
-      then have \<open>p \<in> sub_C' \<phi> \<and> q \<in> sub_C' \<phi>\<close>
-        using DisE_sub_C' by auto
-      from \<open>\<not> (p \<in> V \<or> q \<in> V)\<close> this have \<open>\<not>(consistent A ({p} \<union> V) \<or> consistent A ({q} \<union> V))\<close>
+      from \<open>\<not> (p \<in> V \<or> q \<in> V)\<close> p_q_in_phi have \<open>\<not>(consistent A ({p} \<union> V) \<or> consistent A ({q} \<union> V))\<close>
         using \<open>maximal' A \<phi> V\<close> unfolding maximal'_def by meson
       then show False
         using p_or_q_cons ..
@@ -1453,13 +1464,11 @@ next
     then show \<open>canonical A \<phi>, V \<Turnstile> (p \<^bold>\<or> q)\<close>
       using Dis by (metis (mono_tags, lifting) \<open>p \<in> V \<or> q \<in> V\<close> semantics.simps(3) subsetD)
   next
-    assume a: \<open>canonical A \<phi>, V \<Turnstile> (p \<^bold>\<or> q)\<close>
-    have \<open>p \<in> sub_C' \<phi> \<and> q \<in> sub_C' \<phi>\<close>
-      using Dis.prems(1) DisE_sub_C' by auto 
-    moreover consider \<open>canonical A \<phi>, V \<Turnstile> p\<close> | \<open>canonical A \<phi>, V \<Turnstile> q\<close>
+    assume a: \<open>canonical A \<phi>, V \<Turnstile> (p \<^bold>\<or> q)\<close> 
+    consider \<open>canonical A \<phi>, V \<Turnstile> p\<close> | \<open>canonical A \<phi>, V \<Turnstile> q\<close>
       using a by auto
-    ultimately have \<open>p \<in> V \<or> q \<in> V\<close>
-      using Dis by meson
+    then have \<open>p \<in> V \<or> q \<in> V\<close>
+      using p_q_in_phi Dis by meson
     moreover have \<open>A \<turnstile> p \<^bold>\<longrightarrow> p \<^bold>\<or> q\<close> \<open>A \<turnstile> q \<^bold>\<longrightarrow> p \<^bold>\<or> q\<close>
       by (auto simp: A1)
     ultimately show \<open>(p \<^bold>\<or> q) \<in> V\<close>
@@ -1467,54 +1476,98 @@ next
   qed
 next
   case (Con p q)
-  then show ?case
+  then have \<open>p \<^bold>\<and> q \<in> sub_C \<phi>\<close> 
+    by auto
+  moreover have \<open>p \<in> sub_C (p \<^bold>\<and> q) \<and> q \<in> sub_C (p \<^bold>\<and> q)\<close> 
+    by (simp add: p_in_sub_C_p)
+  ultimately have \<open>p \<in> sub_C \<phi> \<and> q \<in> sub_C \<phi>\<close>
+    using sub_C_transitive by blast
+  then have p_q_in_phi: \<open>p \<in> sub_C' \<phi> \<and> q \<in> sub_C' \<phi>\<close>
+    by simp
+  from Con show ?case
   proof safe
     assume \<open>(p \<^bold>\<and> q) \<in> V\<close>
     then have \<open>consistent A ({p} \<union> V)\<close> \<open>consistent A ({q} \<union> V)\<close>
       using \<open>consistent A V\<close> consistent_consequent' by fastforce+
     then have \<open>p \<in> V\<close> \<open>q \<in> V\<close>
-      using \<open>maximal A V\<close> unfolding maximal_def by fast+
-    then show \<open>canonical A, V \<Turnstile> (p \<^bold>\<and> q)\<close>
-      using Con by simp
+      using p_q_in_phi \<open>maximal' A \<phi> V\<close> unfolding maximal'_def by fast+
+    then show \<open>canonical A \<phi>, V \<Turnstile> (p \<^bold>\<and> q)\<close>
+      using Con p_q_in_phi by fastforce
   next
-    assume \<open>canonical A, V \<Turnstile> (p \<^bold>\<and> q)\<close>
-    then have \<open>canonical A, V \<Turnstile> p\<close> \<open>canonical A, V \<Turnstile> q\<close>
+    assume \<open>canonical A  \<phi>, V \<Turnstile> (p \<^bold>\<and> q)\<close>
+    then have \<open>canonical A \<phi>, V \<Turnstile> p\<close> \<open>canonical A \<phi>, V \<Turnstile> q\<close>
       by auto
     then have \<open>p \<in> V\<close> \<open>q \<in> V\<close>
-      using Con by auto
-    moreover have \<open>A \<turnstile> p \<^bold>\<longrightarrow> q \<^bold>\<longrightarrow> p \<^bold>\<and> q\<close>
+      using Con p_q_in_phi by blast+
+    then have \<open>set [p, q] \<subseteq> V\<close> 
+      by simp
+    moreover have \<open>A \<turnstile> [p, q] \<^bold>\<leadsto> p \<^bold>\<and> q\<close>
       by (auto simp: A1)
+    moreover have \<open>set [p, q] \<subseteq> sub_C' \<phi>\<close>
+      using \<open>p \<in> sub_C \<phi> \<and> q \<in> sub_C \<phi>\<close> by auto
     ultimately show \<open>(p \<^bold>\<and> q) \<in> V\<close>
-      using Con.prems deriv_in_maximal consequent_in_maximal by blast
+      using Con.prems consequent_in_maximal' by metis
   qed
 next
   case (Imp p q)
-  then show ?case
+  then have \<open>p \<^bold>\<longrightarrow> q \<in> sub_C \<phi> \<or> q = \<^bold>\<bottom>\<close> 
+    by auto
+  moreover have \<open>p \<in> sub_C (p \<^bold>\<longrightarrow> q) \<and> q \<in> sub_C (p \<^bold>\<longrightarrow> q)\<close> 
+    by (simp add: p_in_sub_C_p)
+  ultimately have \<open>p \<in> sub_C \<phi> \<and> (q \<in> sub_C \<phi> \<or> q = \<^bold>\<bottom>)\<close>
+    using sub_C_transitive Imp.prems(1) by blast
+  then have p_q_in_phi: \<open>p \<in> sub_C' \<phi> \<and> (q \<in> sub_C' \<phi> \<or> q = \<^bold>\<bottom>)\<close>
+    by auto
+  from Imp show ?case
   proof safe
     assume \<open>(p \<^bold>\<longrightarrow> q) \<in> V\<close>
-    then have \<open>consistent A ({\<^bold>\<not> p \<^bold>\<or> q} \<union> V)\<close>
-      using \<open>consistent A V\<close> consistent_consequent' by fastforce
-    then have \<open>consistent A ({\<^bold>\<not> p} \<union> V) \<or> consistent A ({q} \<union> V)\<close>
-      using \<open>consistent A V\<close> \<open>maximal A V\<close> consistent_disjuncts unfolding maximal_def by blast
-    then have \<open>(\<^bold>\<not> p) \<in> V \<or> q \<in> V\<close>
-      using \<open>maximal A V\<close> unfolding maximal_def by fast
-    then have \<open>p \<notin> V \<or> q \<in> V\<close>
-      using Imp.prems exactly_one_in_maximal by blast
-    then show \<open>canonical A, V \<Turnstile> (p \<^bold>\<longrightarrow> q)\<close>
-      using Imp by simp
-  next
-    assume \<open>canonical A, V \<Turnstile> (p \<^bold>\<longrightarrow> q)\<close>
-    then consider \<open>\<not> canonical A, V \<Turnstile> p\<close> | \<open>canonical A, V \<Turnstile> q\<close>
+    from p_q_in_phi have \<open>p \<in> V \<or> \<^bold>\<not>p \<in> V\<close>
+      using \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> p_q_in_phi
+      by (metis UnI2 \<open>p \<in> sub_C \<phi> \<and> (q \<in> sub_C \<phi> \<or> q = \<^bold>\<bottom>)\<close> consistent_extend_by_p maximal'_def rev_image_eqI)
+    then consider \<open>p \<in> V\<close> | \<open>\<^bold>\<not>p \<in> V\<close> 
+      by fast
+    then show \<open>canonical A \<phi>, V \<Turnstile> (p \<^bold>\<longrightarrow> q)\<close>
+    proof cases
+      case 1
+      then have \<open>q \<in> V \<or> \<^bold>\<not>q \<in> V \<or> q = \<^bold>\<bottom>\<close> 
+        using \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> p_q_in_phi 
+        by (metis UnI2 \<open>p \<in> sub_C \<phi> \<and> (q \<in> sub_C \<phi> \<or> q = \<^bold>\<bottom>)\<close> consistent_extend_by_p maximal'_def rev_image_eqI)
+      then consider (a)\<open>q \<in> V\<close> | (b)\<open>\<^bold>\<not>q \<in> V \<or> q = \<^bold>\<bottom>\<close>
+        by fast
+      then show ?thesis 
+      proof cases
+        case a
+        then show ?thesis
+          using Imp.hyps(2) Imp.prems(2) Imp.prems(3) Imp.prems(4) p_q_in_phi by blast
+      next
+        case b
+        then have \<open>\<not> consistent A V\<close>
+          using 1 \<open>(p \<^bold>\<longrightarrow> q) \<in> V\<close> 
+          by (meson consequent_in_maximal exactly_one_in_maximal maximal_extension subset_eq)
+        then show ?thesis 
+          by (simp add: Imp.prems(3))
+      qed
+    next
+      case 2
+      then have \<open>p \<notin> V\<close> 
+        using Imp.prems(3) Imp.prems(4) exactly_one_in_maximal' p_q_in_phi by blast
+      then show ?thesis 
+        using Imp p_q_in_phi by blast
+    qed
+next
+    assume \<open>canonical A \<phi>, V \<Turnstile> (p \<^bold>\<longrightarrow> q)\<close>
+    then consider \<open>\<not> canonical A \<phi>, V \<Turnstile> p\<close> | \<open>canonical A \<phi>, V \<Turnstile> q\<close>
       by auto
     then have \<open>p \<notin> V \<or> q \<in> V\<close>
-      using Imp by auto
-    then have \<open>(\<^bold>\<not> p) \<in> V \<or> q \<in> V\<close>
-      using Imp.prems exactly_one_in_maximal by blast
+      using Imp by (metis (mono_tags, lifting) p_q_in_phi semantics.simps(1))
+    moreover have \<open>p \<in> sub_C' \<phi>\<close> 
+      using p_q_in_phi by auto
+    ultimately have \<open>(\<^bold>\<not> p) \<in> V \<or> q \<in> V\<close>
+      by (metis Imp.prems(3) Imp.prems(4) UnI2 \<open>p \<in> sub_C \<phi> \<and> (q \<in> sub_C \<phi> \<or> q = \<^bold>\<bottom>)\<close> consistent_extend_by_p imageI maximal'_def)
     moreover have \<open>A \<turnstile> \<^bold>\<not> p \<^bold>\<longrightarrow> p \<^bold>\<longrightarrow> q\<close> \<open>A \<turnstile> q \<^bold>\<longrightarrow> p \<^bold>\<longrightarrow> q\<close>
       by (auto simp: A1)             
     ultimately show \<open>(p \<^bold>\<longrightarrow> q) \<in> V\<close>
-      using Imp.prems deriv_in_maximal consequent_in_maximal by blast
-  qed
+      using Imp.prems by (metis consistent_consequent maximal'_def)
 next
   case (K i p)
   then show ?case
