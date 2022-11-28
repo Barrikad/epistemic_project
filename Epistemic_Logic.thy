@@ -1614,60 +1614,45 @@ abbreviation valid :: \<open>(('i :: countable, 'i fm set) kripke \<Rightarrow> 
   where \<open>P; G \<TTurnstile> p \<equiv> P; G \<TTurnstile>\<star> p\<close>
 
 theorem strong_completeness:
-  assumes \<open>P; G \<TTurnstile> (p :: ('i :: countable) fm)\<close> and \<open>\<forall> \<phi>. P (canonical A \<phi>)\<close>
+  assumes \<open>finite G\<close> and \<open>P; G \<TTurnstile> (p :: ('i :: countable) fm)\<close> and \<open>\<forall> (\<phi> :: ('i :: countable) fm). P (canonical A \<phi>)\<close>
   shows \<open>A; G \<turnstile> p\<close>
 proof (rule ccontr)
   assume \<open>\<nexists>qs. set qs \<subseteq> G \<and> (A \<turnstile> qs \<^bold>\<leadsto> p)\<close>
   then have *: \<open>\<forall>qs. set qs \<subseteq> G \<longrightarrow> \<not> (A \<turnstile> (\<^bold>\<not> p) # qs \<^bold>\<leadsto> \<^bold>\<bottom>)\<close>
     using K_Boole by blast
 
-  {
-    fix qs
-    assume \<open>set qs \<subseteq> G\<close>
-    let ?\<phi> = \<open>(\<^bold>\<not> p) # qs \<^bold>\<leadsto> \<^bold>\<bottom>\<close> 
-    let ?S = \<open>set (\<^bold>\<not>p # qs)\<close>
-    let ?V = \<open>Extend' A ?\<phi> ?S from_nat\<close>
-    let ?M = \<open>canonical A ?\<phi>\<close>
+  obtain qs where \<open>set qs = G\<close>
+    using assms(1) finite_list by auto
+  let ?\<phi> = \<open>(\<^bold>\<not> p) # qs \<^bold>\<leadsto> \<^bold>\<bottom>\<close> 
+  let ?S = \<open>set (\<^bold>\<not>p # qs)\<close>
+  let ?V = \<open>Extend' A ?\<phi> ?S from_nat\<close>
+  let ?M = \<open>canonical A ?\<phi>\<close>
 
-    have  \<open>set (xs :: 'i fm list) \<subseteq> sub_C (xs \<^bold>\<leadsto> \<^bold>\<bottom>)\<close> for xs 
-    proof (induct xs)
-      case (Cons a xs)
-      then show ?case 
-        using Un_insert_right insert_subsetI list.simps(15) p_in_sub_C_p sub_C.simps(5) verit_comp_simplify1(2) by fastforce
-    qed auto
-    then have 1:\<open>?S \<subseteq> sub_C' ?\<phi>\<close> 
-      by (meson sup.coboundedI1)
-    moreover have \<open>consistent A ?S\<close>
-      using * \<open>set qs \<subseteq> G\<close> consistent_def by (metis K_imply_weaken) 
-    ultimately have \<open>\<forall>q \<in> set (\<^bold>\<not>p # qs). ?M, ?V \<Turnstile> q\<close>
-      using canonical_model by blast
-    then have \<open>?M, ?V \<Turnstile> (\<^bold>\<not> p)\<close> \<open>\<forall>q \<in> set qs. ?M, ?V \<Turnstile> q\<close>
-      by auto
-    moreover have \<open>?V \<in> mcss A ?\<phi>\<close>
-      using \<open>consistent A ?S\<close> consistent_Extend' maximal_Extend' surj_from_nat Extend'_subset_sub_C mem_Collect_eq 1 
-      by (smt (verit))
-    ultimately have \<open>?M, ?V \<Turnstile> (\<^bold>\<not> p)\<close> \<open>\<forall>q \<in> set qs. ?M, ?V \<Turnstile> q\<close> \<open>?V \<in> mcss A ?\<phi>\<close>
-      .
-  }
-  then have \<open>\<close>
-  let ?S = \<open>{\<^bold>\<not> p} \<union> G\<close>
-  let ?V = \<open>Extend A ?S from_nat\<close>
-  let ?M = \<open>canonical A p\<close>
-
-  have \<open>consistent A ?S\<close>
-    using * by (metis K_imply_Cons consistent_def inconsistent_subset)
-  then have \<open>?M, ?V \<Turnstile> (\<^bold>\<not> p)\<close> \<open>\<forall>q \<in> G. ?M, ?V \<Turnstile> q\<close>
-    using canonical_model 
-  moreover have \<open>?V \<in> mcss A\<close>
-    using \<open>consistent A ?S\<close> consistent_Extend maximal_Extend surj_from_nat
-  ultimately have \<open>?M, ?V \<Turnstile> p\<close>
-    using assms by simp
-  then show False
+  have  \<open>set (xs :: 'i fm list) \<subseteq> sub_C (xs \<^bold>\<leadsto> \<^bold>\<bottom>)\<close> for xs 
+  proof (induct xs)
+    case (Cons a xs)
+    then show ?case 
+      using Un_insert_right insert_subsetI list.simps(15) p_in_sub_C_p sub_C.simps(5) verit_comp_simplify1(2) by fastforce
+  qed auto
+  then have 1:\<open>?S \<subseteq> sub_C' ?\<phi>\<close> 
+    by (meson sup.coboundedI1)
+  moreover have \<open>consistent A ?S\<close>
+    using * \<open>set qs = G\<close> consistent_def K_imply_weaken by blast
+  ultimately have \<open>\<forall>q \<in> set (\<^bold>\<not>p # qs). ?M, ?V \<Turnstile> q\<close>
+    using canonical_model by blast
+  then have \<open>?M, ?V \<Turnstile> (\<^bold>\<not> p)\<close> \<open>\<forall>q \<in> set qs. ?M, ?V \<Turnstile> q\<close>
+    by auto
+  moreover have \<open>?V \<in> mcss A ?\<phi>\<close>
+    using \<open>consistent A ?S\<close> consistent_Extend' maximal_Extend' surj_from_nat Extend'_subset_sub_C mem_Collect_eq 1 
+    by (smt (verit))
+  ultimately have \<open>?M, ?V \<Turnstile> p\<close> 
+    using \<open>set qs = G\<close> assms(2) assms(3) frame.select_convs(1) by fast
+  then show False 
     using \<open>?M, ?V \<Turnstile> (\<^bold>\<not> p)\<close> by simp
 qed
 
 corollary completeness:
-  assumes \<open>P; {} \<TTurnstile> p\<close> and \<open>P (canonical A)\<close>
+  assumes \<open>P; {} \<TTurnstile> p\<close> and \<open>\<forall> (\<phi> :: ('i :: countable) fm). P (canonical A \<phi>)\<close>
   shows \<open>A \<turnstile> p\<close>
   using assms strong_completeness[where G=\<open>{}\<close>] by simp
 
@@ -1687,14 +1672,14 @@ lemma strong_soundness\<^sub>K: \<open>G \<turnstile>\<^sub>K p \<Longrightarrow
 abbreviation validK (\<open>_ \<TTurnstile>\<^sub>K _\<close> [50, 50] 50) where
   \<open>G \<TTurnstile>\<^sub>K p \<equiv> (\<lambda>_. True); G \<TTurnstile> p\<close>
 
-lemma strong_completeness\<^sub>K: \<open>G \<TTurnstile>\<^sub>K p \<Longrightarrow> G \<turnstile>\<^sub>K p\<close>
-  using strong_completeness[of \<open>\<lambda>_. True\<close>] by blast
+lemma strong_completeness\<^sub>K: \<open>G \<TTurnstile>\<^sub>K p \<Longrightarrow> G \<turnstile>\<^sub>K p\<close> if \<open>finite G\<close>
+  using strong_completeness[of G \<open>\<lambda>_. True\<close>] that by auto
 
-theorem main\<^sub>K: \<open>G \<TTurnstile>\<^sub>K p \<longleftrightarrow> G \<turnstile>\<^sub>K p\<close>
-  using strong_soundness\<^sub>K[of G p] strong_completeness\<^sub>K[of G p] by fast
+theorem main\<^sub>K: \<open>G \<TTurnstile>\<^sub>K p \<longleftrightarrow> G \<turnstile>\<^sub>K p\<close> if \<open>finite G\<close>
+  using strong_soundness\<^sub>K[of G p] strong_completeness\<^sub>K[of G p] that by fast
 
-corollary \<open>G \<TTurnstile>\<^sub>K p \<Longrightarrow> (\<lambda>_. True); G \<TTurnstile>\<star> p\<close>
-  using strong_soundness\<^sub>K[of G p] strong_completeness\<^sub>K[of G p] by fast
+corollary \<open>G \<TTurnstile>\<^sub>K p \<Longrightarrow> (\<lambda>_. True); G \<TTurnstile>\<star> p\<close> if \<open>finite G\<close>
+  using strong_soundness\<^sub>K[of G p] strong_completeness\<^sub>K[of G p] that by fast
 
 section \<open>System T\<close>
 
@@ -1713,42 +1698,53 @@ lemma strong_soundness\<^sub>T: \<open>G \<turnstile>\<^sub>T p \<Longrightarrow
   using strong_soundness soundness_AxT .
 
 lemma AxT_reflexive:
-  assumes \<open>AxT \<le> A\<close> and \<open>consistent A V\<close> and \<open>maximal A V\<close>
+  assumes \<open>AxT \<le> A\<close> and \<open>consistent A V\<close> and \<open>maximal' A \<phi> V\<close> and \<open>V \<subseteq> sub_C' \<phi>\<close>
   shows \<open>V \<in> reach A i V\<close>
-proof -
-  have \<open>(K i p \<^bold>\<longrightarrow> p) \<in> V\<close> for p
-    using assms ax_in_maximal AxT.intros by fast
-  then have \<open>p \<in> V\<close> if \<open>K i p \<in> V\<close> for p
-    using that assms consequent_in_maximal by blast
-  then show ?thesis
-    using assms by blast
+proof (safe)
+  fix p
+  assume \<open>K i p \<in> V\<close>
+  moreover have \<open>p \<in> sub_C (K i p)\<close> 
+    by (simp add: p_in_sub_C_p)
+  ultimately have \<open>p \<in> sub_C' \<phi>\<close> 
+    using \<open>V \<subseteq> sub_C' \<phi>\<close>  
+    by (smt (verit, del_insts) Un_iff fm.distinct(53) image_iff in_mono sub_C_transitive) (*remove smt call later if time*)
+  moreover have \<open>A \<turnstile> K i p \<^bold>\<longrightarrow> p\<close>
+    by (metis Ax AxT.simps assms(1) rev_predicate1D)
+  ultimately show \<open>p \<in> V\<close> 
+    using \<open>maximal' A \<phi> V\<close> \<open>K i p \<in> V\<close> assms(2) consistent_consequent maximal'_def by blast
 qed
 
 lemma reflexive\<^sub>T:
   assumes \<open>AxT \<le> A\<close>
-  shows \<open>reflexive (canonical A)\<close>
+  shows \<open>\<forall> (\<phi> :: ('i :: countable) fm). reflexive (canonical A \<phi>)\<close>
   unfolding reflexive_def
 proof safe
-  fix i V
-  assume \<open>V \<in> \<W> (canonical A)\<close>
-  then have \<open>consistent A V\<close> \<open>maximal A V\<close>
+  fix i V \<phi>
+  assume \<open>V \<in> \<W> (canonical A \<phi>)\<close>
+  then have \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>V \<subseteq> sub_C' \<phi>\<close>
     by simp_all
   with AxT_reflexive assms have \<open>V \<in> reach A i V\<close> .
-  then show \<open>V \<in> \<K> (canonical A) i V\<close>
+  then show \<open>V \<in> \<K> (canonical A \<phi>) i V\<close>
     by simp
 qed
 
 abbreviation validT (\<open>_ \<TTurnstile>\<^sub>T _\<close> [50, 50] 50) where
   \<open>G \<TTurnstile>\<^sub>T p \<equiv> reflexive; G \<TTurnstile> p\<close>
 
-lemma strong_completeness\<^sub>T: \<open>G \<TTurnstile>\<^sub>T p \<Longrightarrow> G \<turnstile>\<^sub>T p\<close>
-  using strong_completeness reflexive\<^sub>T by blast
+lemma strong_completeness\<^sub>T: \<open>G \<TTurnstile>\<^sub>T p \<Longrightarrow> G \<turnstile>\<^sub>T p\<close> if \<open>finite G\<close>
+proof-
+  assume \<open>G \<TTurnstile>\<^sub>T p\<close>
+  moreover have \<open>\<forall>(\<phi> :: ('i :: countable) fm). reflexive (canonical AxT \<phi>)\<close> 
+    using reflexive\<^sub>T by auto
+  ultimately show ?thesis
+    using strong_completeness \<open>finite G\<close> by blast
+qed
 
-theorem main\<^sub>T: \<open>G \<TTurnstile>\<^sub>T p \<longleftrightarrow> G \<turnstile>\<^sub>T p\<close>
-  using strong_soundness\<^sub>T[of G p] strong_completeness\<^sub>T[of G p] by fast
+theorem main\<^sub>T: \<open>G \<TTurnstile>\<^sub>T p \<longleftrightarrow> G \<turnstile>\<^sub>T p\<close> if \<open>finite G\<close>
+  using strong_soundness\<^sub>T[of G p] strong_completeness\<^sub>T[of G p] that by fast
 
-corollary \<open>G \<TTurnstile>\<^sub>T p \<longrightarrow> reflexive; G \<TTurnstile>\<star> p\<close>
-  using strong_soundness\<^sub>T[of G p] strong_completeness\<^sub>T[of G p] by fast
+corollary \<open>G \<TTurnstile>\<^sub>T p \<longrightarrow> reflexive; G \<TTurnstile>\<star> p\<close> if \<open>finite G\<close>
+  using strong_soundness\<^sub>T[of G p] strong_completeness\<^sub>T[of G p] that by fast
 
 
 section \<open>System KB\<close>
