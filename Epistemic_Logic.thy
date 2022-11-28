@@ -981,7 +981,8 @@ fun dual where
   \<open>dual (\<^bold>\<not>p) = p\<close> |
   \<open>dual p = \<^bold>\<not>p\<close>
 
-
+lemma dual_imp1: \<open>A \<turnstile> p \<^bold>\<longrightarrow> \<^bold>\<not>(dual p)\<close> sorry
+lemma dual_imp2: \<open>A \<turnstile> \<^bold>\<not>(dual p) \<^bold>\<longrightarrow> p\<close> sorry
 
 lemma exactly_one_in_maximal': 
   assumes \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>p \<in> sub_C' \<phi>\<close>
@@ -1247,11 +1248,11 @@ subsection \<open>Canonical model\<close>
 abbreviation pi :: \<open>'i fm set \<Rightarrow> id \<Rightarrow> bool\<close> where
   \<open>pi V x \<equiv> Pro x \<in> V\<close>
 
-abbreviation known :: \<open>'i fm set \<Rightarrow> 'i \<Rightarrow> 'i fm set\<close> where
-  \<open>known V i \<equiv> {p. K i p \<in> V}\<close>
+abbreviation known :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm set \<Rightarrow> 'i \<Rightarrow> 'i fm set\<close> where
+  \<open>known A V i \<equiv> {p. A; V \<turnstile> K i p}\<close> (*necessary to change this because axioms might imply knowledge formulas not in sub_C' p*)
 
 abbreviation reach :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i \<Rightarrow> 'i fm set \<Rightarrow> 'i fm set set\<close> where
-  \<open>reach A i V \<equiv> {W. \<forall> p \<in> known V i. A;W \<turnstile> p}\<close>
+  \<open>reach A i V \<equiv> {W. \<forall> p \<in> known A V i. A; W \<turnstile> p}\<close> 
 
 abbreviation mcss :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm \<Rightarrow> 'i fm set set\<close> where
   \<open>mcss A \<phi> \<equiv> {W. W \<subseteq> sub_C' \<phi> \<and> consistent A W \<and> maximal' A \<phi> W}\<close>
@@ -1710,15 +1711,16 @@ lemma AxT_reflexive:
   assumes \<open>AxT \<le> A\<close> and \<open>consistent A V\<close> and \<open>maximal' A \<phi> V\<close> and \<open>V \<subseteq> sub_C' \<phi>\<close>
   shows \<open>V \<in> reach A i V\<close>
 proof (safe)
-  fix p
-  assume \<open>K i p \<in> V\<close>
-  then have \<open>set [K i p] \<subseteq> V\<close> 
-    by simp
+  fix p qs
+  assume \<open>set qs \<subseteq> V\<close>
+  assume \<open>A \<turnstile> qs \<^bold>\<leadsto> K i p\<close>
   moreover have \<open>A \<turnstile> K i p \<^bold>\<longrightarrow> p\<close>
     by (metis Ax AxT.simps assms(1) rev_predicate1D)
-  ultimately show \<open>A; V \<turnstile> p\<close> 
-    by fastforce
-qed
+  ultimately have \<open>A \<turnstile> qs \<^bold>\<leadsto> p\<close> 
+    by (metis K_imply_head K_right_mp R1 imply.simps(2))
+  then show \<open>A; V \<turnstile> p\<close> 
+    using \<open>set qs \<subseteq> V\<close> by auto
+qed                    
 
 lemma reflexive\<^sub>T:
   assumes \<open>AxT \<le> A\<close>
@@ -1767,6 +1769,24 @@ lemma soundness_AxB: \<open>AxB p \<Longrightarrow> symmetric M \<Longrightarrow
 lemma strong_soundness\<^sub>K\<^sub>B: \<open>G \<turnstile>\<^sub>K\<^sub>B p \<Longrightarrow> symmetric; G \<TTurnstile>\<star> p\<close>
   using strong_soundness soundness_AxB .
 
+lemma AK_assms_R1: \<open>A; G \<turnstile> p \<Longrightarrow> A; G \<turnstile> p \<^bold>\<longrightarrow> q \<Longrightarrow> A; G \<turnstile> q\<close>
+proof-
+  assume \<open>A; G \<turnstile> p\<close>
+  then obtain xs where \<open>set xs \<subseteq> G\<close> \<open>A \<turnstile> xs \<^bold>\<leadsto> p\<close>
+    by auto
+  assume \<open>A; G \<turnstile> p \<^bold>\<longrightarrow> q\<close>
+  then obtain ys where \<open>set ys \<subseteq> G\<close> \<open>A \<turnstile> ys \<^bold>\<leadsto> (p \<^bold>\<longrightarrow> q)\<close>
+    by auto
+  have \<open>A \<turnstile> xs @ ys \<^bold>\<leadsto> p\<close>
+    using \<open>A \<turnstile> xs \<^bold>\<leadsto> p\<close> by (simp add: K_imply_weaken)
+  moreover have \<open>A \<turnstile> xs @ ys \<^bold>\<leadsto> (p \<^bold>\<longrightarrow> q)\<close> 
+    using \<open>A \<turnstile> ys \<^bold>\<leadsto> (p \<^bold>\<longrightarrow> q)\<close> by (simp add: K_imply_weaken)
+  ultimately have \<open>A \<turnstile> xs @ ys \<^bold>\<leadsto> q\<close>
+    using K_right_mp by auto
+  then show ?thesis
+    using \<open>set xs \<subseteq> G\<close> \<open>set ys \<subseteq> G\<close> by (metis set_append sup.boundedI)
+qed
+
 lemma AxB_symmetric':
   assumes \<open>AxB \<le> A\<close> \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>consistent A W\<close> \<open>maximal' A \<phi> W\<close> \<open>V \<subseteq> sub_C' \<phi>\<close> \<open>W \<subseteq> sub_C' \<phi>\<close>
     and \<open>W \<in> reach A i V\<close>
@@ -1778,30 +1798,57 @@ proof -
     assume \<open>K i p \<in> W\<close> 
     then have \<open>K i p \<in> sub_C' \<phi>\<close>
       using assms(7) by auto
-    have \<open>A \<turnstile> dual p \<^bold>\<longrightarrow> K i (L i (dual p))\<close> 
+    moreover have \<open>p \<in> sub_C (K i p)\<close>
+      by (simp add: p_in_sub_C_p)
+    ultimately have \<open>p \<in> sub_C' \<phi>\<close> 
+      by (metis (no_types, lifting) Un_iff fm.distinct(53) image_iff sub_C_transitive)
+    moreover assume \<open>p \<notin> V\<close>
+    ultimately have \<open>dual p \<in> V\<close>
+      using assms by (simp add: exactly_one_in_maximal')
+    then have \<open>set [dual p] \<subseteq> V\<close> 
+      by simp
+    moreover have \<open>A \<turnstile> dual p \<^bold>\<longrightarrow> K i (L i (dual p))\<close> 
       by (metis Ax AxB.simps assms(1) rev_predicate1D)
-    assume \<open>p \<notin> V\<close>
-
-
-(*
-    then have \<open>K i (K i p) \<in> V\<close>
-      using \<open>W \<in> reach A i V\<close> 
-    then have \<open>dual p \<in> V\<close>
-      using assms exactly_one_in_maximal' 
-    then have \<open>K i (L i (\<^bold>\<not> p)) \<in> V\<close>
-      using assms(1-3) ax_in_maximal AxB.intros consequent_in_maximal by fast
-    then have \<open>L i (\<^bold>\<not> p) \<in> W\<close>
-      using \<open>W \<in> reach A i V\<close> by fast
-    then have \<open>(\<^bold>\<not> K i p) \<in> W\<close>
-      using assms(4-5) by (meson K_LK consistent_consequent maximal_def)
+    ultimately have \<open>L i (dual p) \<in> known A V i\<close> 
+      by fastforce
+    then have \<open>A; W \<turnstile> L i (dual p)\<close>
+      using \<open>W \<in> reach A i V\<close> by simp
+    have \<open>A; W \<turnstile> K i p \<^bold>\<longrightarrow> L i (dual p) \<^bold>\<longrightarrow> \<^bold>\<bottom>\<close>
+    proof-
+      have \<open>A \<turnstile> p \<^bold>\<longrightarrow> \<^bold>\<not>(dual p)\<close> 
+        using dual_imp1 by auto
+      then have \<open>A \<turnstile> K i (p \<^bold>\<longrightarrow> \<^bold>\<not>(dual p))\<close> 
+        using R2 by fast
+      moreover have \<open>A \<turnstile> K i (p \<^bold>\<longrightarrow> \<^bold>\<not>(dual p)) \<^bold>\<longrightarrow> K i p \<^bold>\<longrightarrow> K i (\<^bold>\<not>(dual p))\<close>
+        by (simp add: K_A2')
+      moreover have \<open>A \<turnstile> K i (\<^bold>\<not>(dual p)) \<^bold>\<longrightarrow> L i (dual p) \<^bold>\<longrightarrow> \<^bold>\<bottom>\<close>
+        using A1 by force
+      ultimately have \<open>A \<turnstile> K i p \<^bold>\<longrightarrow> L i (dual p) \<^bold>\<longrightarrow> \<^bold>\<bottom>\<close>
+        using R1 imp_chain by blast
+      then show ?thesis 
+        by (metis bot.extremum empty_set imply.simps(1))
+    qed
+    then obtain qs where \<open>set qs \<subseteq> W \<and> A \<turnstile> qs \<^bold>\<leadsto> (K i p \<^bold>\<longrightarrow> L i (dual p) \<^bold>\<longrightarrow> \<^bold>\<bottom>)\<close>
+      by fast
+    then have \<open>set (qs @ [K i p]) \<subseteq> W \<and> A \<turnstile> (qs @ [K i p]) \<^bold>\<leadsto> (L i (dual p) \<^bold>\<longrightarrow> \<^bold>\<bottom>)\<close> 
+      using \<open>K i p \<in> W\<close> 
+      by (simp add: imply_append)
+    then have \<open>A; W \<turnstile> L i (dual p) \<^bold>\<longrightarrow> \<^bold>\<bottom>\<close>
+      by fast
+    then have \<open>A; W \<turnstile> \<^bold>\<bottom>\<close>
+      using \<open>A; W \<turnstile> L i (dual p)\<close> AK_assms_R1 by blast 
     then show False
-      using \<open>K i p \<in> W\<close> assms(4-5) exactly_one_in_maximal by fast
+      using assms(4) consistent_def by auto
   qed
-  then have \<open>known W i \<subseteq> V\<close>
-    by blast
+  have \<open>\<forall> p. A; W \<turnstile> K i p \<longrightarrow> A; V \<turnstile> p\<close> 
+  proof (rule allI, rule impI)
+    fix p 
+    assume \<open>A; W \<turnstile> K i p\<close>
+    show \<open>A; V \<turnstile> p\<close> sorry
+  qed
   then show ?thesis
     using assms(2-3) by simp
-qed*)
+qed
 
 lemma symmetric\<^sub>K\<^sub>B:
   assumes \<open>AxB \<le> A\<close>
