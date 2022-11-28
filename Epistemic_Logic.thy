@@ -1614,16 +1614,45 @@ abbreviation valid :: \<open>(('i :: countable, 'i fm set) kripke \<Rightarrow> 
   where \<open>P; G \<TTurnstile> p \<equiv> P; G \<TTurnstile>\<star> p\<close>
 
 theorem strong_completeness:
-  assumes \<open>P; G \<TTurnstile> p\<close> and \<open>P (canonical A \<phi>)\<close> and \<open>p \<in> sub_C' \<phi>\<close>
+  assumes \<open>P; G \<TTurnstile> (p :: ('i :: countable) fm)\<close> and \<open>\<forall> \<phi>. P (canonical A \<phi>)\<close>
   shows \<open>A; G \<turnstile> p\<close>
 proof (rule ccontr)
   assume \<open>\<nexists>qs. set qs \<subseteq> G \<and> (A \<turnstile> qs \<^bold>\<leadsto> p)\<close>
   then have *: \<open>\<forall>qs. set qs \<subseteq> G \<longrightarrow> \<not> (A \<turnstile> (\<^bold>\<not> p) # qs \<^bold>\<leadsto> \<^bold>\<bottom>)\<close>
     using K_Boole by blast
 
+  {
+    fix qs
+    assume \<open>set qs \<subseteq> G\<close>
+    let ?\<phi> = \<open>(\<^bold>\<not> p) # qs \<^bold>\<leadsto> \<^bold>\<bottom>\<close> 
+    let ?S = \<open>set (\<^bold>\<not>p # qs)\<close>
+    let ?V = \<open>Extend' A ?\<phi> ?S from_nat\<close>
+    let ?M = \<open>canonical A ?\<phi>\<close>
+
+    have  \<open>set (xs :: 'i fm list) \<subseteq> sub_C (xs \<^bold>\<leadsto> \<^bold>\<bottom>)\<close> for xs 
+    proof (induct xs)
+      case (Cons a xs)
+      then show ?case 
+        using Un_insert_right insert_subsetI list.simps(15) p_in_sub_C_p sub_C.simps(5) verit_comp_simplify1(2) by fastforce
+    qed auto
+    then have 1:\<open>?S \<subseteq> sub_C' ?\<phi>\<close> 
+      by (meson sup.coboundedI1)
+    moreover have \<open>consistent A ?S\<close>
+      using * \<open>set qs \<subseteq> G\<close> consistent_def by (metis K_imply_weaken) 
+    ultimately have \<open>\<forall>q \<in> set (\<^bold>\<not>p # qs). ?M, ?V \<Turnstile> q\<close>
+      using canonical_model by blast
+    then have \<open>?M, ?V \<Turnstile> (\<^bold>\<not> p)\<close> \<open>\<forall>q \<in> set qs. ?M, ?V \<Turnstile> q\<close>
+      by auto
+    moreover have \<open>?V \<in> mcss A ?\<phi>\<close>
+      using \<open>consistent A ?S\<close> consistent_Extend' maximal_Extend' surj_from_nat Extend'_subset_sub_C mem_Collect_eq 1 
+      by (smt (verit))
+    ultimately have \<open>?M, ?V \<Turnstile> (\<^bold>\<not> p)\<close> \<open>\<forall>q \<in> set qs. ?M, ?V \<Turnstile> q\<close> \<open>?V \<in> mcss A ?\<phi>\<close>
+      .
+  }
+  then have \<open>\<close>
   let ?S = \<open>{\<^bold>\<not> p} \<union> G\<close>
   let ?V = \<open>Extend A ?S from_nat\<close>
-  let ?M = \<open>canonical A \<phi>\<close>
+  let ?M = \<open>canonical A p\<close>
 
   have \<open>consistent A ?S\<close>
     using * by (metis K_imply_Cons consistent_def inconsistent_subset)
