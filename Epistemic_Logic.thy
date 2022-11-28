@@ -1518,8 +1518,8 @@ next
     using sub_C_transitive Imp.prems(1) by blast
   then have p_q_in_phi: \<open>p \<in> sub_C' \<phi> \<and> (q \<in> sub_C' \<phi> \<or> q = \<^bold>\<bottom>)\<close>
     by auto
-  from Imp show ?case
-  proof safe
+  show ?case
+  proof (rule iffI)
     assume \<open>(p \<^bold>\<longrightarrow> q) \<in> V\<close>
     from p_q_in_phi have \<open>p \<in> V \<or> \<^bold>\<not>p \<in> V\<close>
       using \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> p_q_in_phi
@@ -1554,7 +1554,7 @@ next
       then show ?thesis 
         using Imp p_q_in_phi by blast
     qed
-next
+  next
     assume \<open>canonical A \<phi>, V \<Turnstile> (p \<^bold>\<longrightarrow> q)\<close>
     then consider \<open>\<not> canonical A \<phi>, V \<Turnstile> p\<close> | \<open>canonical A \<phi>, V \<Turnstile> q\<close>
       by auto
@@ -1568,74 +1568,42 @@ next
       by (auto simp: A1)             
     ultimately show \<open>(p \<^bold>\<longrightarrow> q) \<in> V\<close>
       using Imp.prems by (metis consistent_consequent maximal'_def)
+  qed
 next
   case (K i p)
-  then show ?case
-    using truth_lemma_K by blast
+  then show ?case sorry
 next
   case (Ev g p)
-  then show ?case
-    using truth_lemma_Ev by blast
+  then show ?case sorry
 next
-  case (Co g p)
-  then have 1: \<open>\<forall> n \<ge> 1. Ev_n g p n \<in> V \<longleftrightarrow> canonical A, V \<Turnstile> Ev_n g p n\<close>
-    using truth_lemma_Ev_n by blast
-  show ?case
-  proof (rule iffI)
-    assume a: \<open>Co g p \<in> V\<close>
-    have \<open>n \<ge> 1 \<Longrightarrow> Ev_n g p n \<in> V\<close> for n
-    proof-
-      assume \<open>n \<ge> 1\<close>
-      then have \<open>Co g p \<^bold>\<longrightarrow> Ev_n g p n \<in> V\<close>
-        using Co.prems Co_imp_Ev_n deriv_in_maximal by blast
-      then show ?thesis
-        using a Co.prems consequent_in_maximal by blast
-    qed
-    then have \<open>\<forall> n \<ge> 1. canonical A, V \<Turnstile> Ev_n g p n\<close> 
-      using 1 by simp
-    then show \<open>canonical A, V \<Turnstile> Co g p\<close>
-      by simp
-  next
-    assume \<open>canonical A, V \<Turnstile> Co g p\<close> 
-    then have Co_unfold: \<open>\<forall> n \<ge> 1. canonical A, V \<Turnstile> Ev_n g p n\<close>
-      by simp
-    then have \<open>\<forall> n \<ge> 1. Ev_n g p n \<in> V\<close>
-      by (simp add: "1")
-    have \<open>\<not> consistent A ({\<^bold>\<not>(p \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> p))} \<union> Ev_known V g)\<close> sorry
-    then obtain W where W:
-      \<open>{\<^bold>\<not>(p \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> p))} \<union> W \<subseteq> {\<^bold>\<not>(p \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> p))} \<union> Ev_known V g\<close> 
-      \<open>(\<^bold>\<not>(p \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> p))) \<notin> W\<close> \<open>finite W\<close> \<open>\<not> consistent A ({\<^bold>\<not>(p \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> p))} \<union> W)\<close>
-      using exists_finite_inconsistent by metis
-    obtain L where L: \<open>set L = W\<close>
-      using \<open>finite W\<close> finite_list by blast
-    then have \<open>A \<turnstile> L \<^bold>\<leadsto> (p \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> p))\<close>
-      using W(4) inconsistent_imply by blast
-    then have \<open>A \<turnstile> L \<^bold>\<leadsto> Co g p\<close> sorry (*this doesn't work*)
-    show \<open>Co g p \<in> V\<close> sorry
-  qed
+  case (Co g p) 
+  then show ?case sorry
 next
   case (Di g p)
   then show ?case sorry
 qed
 
 lemma canonical_model:
-  assumes \<open>consistent A S\<close> and \<open>p \<in> S\<close>
-  defines \<open>V \<equiv> Extend A S from_nat\<close> and \<open>M \<equiv> canonical A\<close>
-  shows \<open>M, V \<Turnstile> p\<close> and \<open>consistent A V\<close> and \<open>maximal A V\<close>
+  fixes \<phi> :: \<open>('i :: countable) fm\<close>
+  assumes \<open>consistent A S\<close> and \<open>p \<in> S\<close> and \<open>S \<subseteq> sub_C' \<phi>\<close>
+  defines \<open>V \<equiv> Extend' A \<phi> S from_nat\<close> and \<open>M \<equiv> canonical A \<phi>\<close>
+  shows \<open>M, V \<Turnstile> p\<close> and \<open>consistent A V\<close> and \<open>maximal' A \<phi> V\<close>
 proof -
   have \<open>consistent A V\<close>
-    using \<open>consistent A S\<close> unfolding V_def using consistent_Extend by blast
-  have \<open>maximal A V\<close>
-    unfolding V_def using maximal_Extend surj_from_nat by blast
-  { fix x
-    assume \<open>x \<in> S\<close>
+    using \<open>consistent A S\<close> unfolding V_def using consistent_Extend' by blast
+  have \<open>maximal' A \<phi> V\<close>
+    unfolding V_def using maximal_Extend' surj_from_nat by blast
+  { fix x :: \<open>('i :: countable) fm\<close>
+    assume \<open>x \<in> S\<close> \<open>x \<in> sub_C' \<phi>\<close>
     then have \<open>x \<in> V\<close>
-      unfolding V_def using Extend_subset by blast
-    then have \<open>M, V \<Turnstile> x\<close>
-      unfolding M_def using truth_lemma \<open>consistent A V\<close> \<open>maximal A V\<close> by blast }
+      unfolding V_def using Extend'_subset by blast
+    moreover have \<open>V \<subseteq> sub_C' \<phi>\<close> 
+      unfolding V_def using \<open>S \<subseteq> sub_C' \<phi>\<close> by (simp add: Extend'_subset_sub_C)
+    ultimately have \<open>M, V \<Turnstile> x\<close>
+      unfolding M_def using truth_lemma \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>x \<in> sub_C' \<phi>\<close> by blast }
   then show \<open>M, V \<Turnstile> p\<close>
-    using \<open>p \<in> S\<close> by blast+
-  show \<open>consistent A V\<close> \<open>maximal A V\<close>
+    using \<open>p \<in> S\<close> \<open>S \<subseteq> sub_C' \<phi>\<close> by blast+
+  show \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close>
     by fact+
 qed
 
@@ -1646,7 +1614,7 @@ abbreviation valid :: \<open>(('i :: countable, 'i fm set) kripke \<Rightarrow> 
   where \<open>P; G \<TTurnstile> p \<equiv> P; G \<TTurnstile>\<star> p\<close>
 
 theorem strong_completeness:
-  assumes \<open>P; G \<TTurnstile> p\<close> and \<open>P (canonical A)\<close>
+  assumes \<open>P; G \<TTurnstile> p\<close> and \<open>P (canonical A \<phi>)\<close> and \<open>p \<in> sub_C' \<phi>\<close>
   shows \<open>A; G \<turnstile> p\<close>
 proof (rule ccontr)
   assume \<open>\<nexists>qs. set qs \<subseteq> G \<and> (A \<turnstile> qs \<^bold>\<leadsto> p)\<close>
@@ -1655,14 +1623,14 @@ proof (rule ccontr)
 
   let ?S = \<open>{\<^bold>\<not> p} \<union> G\<close>
   let ?V = \<open>Extend A ?S from_nat\<close>
-  let ?M = \<open>canonical A\<close>
+  let ?M = \<open>canonical A \<phi>\<close>
 
   have \<open>consistent A ?S\<close>
     using * by (metis K_imply_Cons consistent_def inconsistent_subset)
   then have \<open>?M, ?V \<Turnstile> (\<^bold>\<not> p)\<close> \<open>\<forall>q \<in> G. ?M, ?V \<Turnstile> q\<close>
-    using canonical_model by fastforce+
+    using canonical_model 
   moreover have \<open>?V \<in> mcss A\<close>
-    using \<open>consistent A ?S\<close> consistent_Extend maximal_Extend surj_from_nat by blast
+    using \<open>consistent A ?S\<close> consistent_Extend maximal_Extend surj_from_nat
   ultimately have \<open>?M, ?V \<Turnstile> p\<close>
     using assms by simp
   then show False
