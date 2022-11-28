@@ -977,11 +977,19 @@ proof (rule ccontr)
   qed
 qed
 
+fun dual where
+  \<open>dual (\<^bold>\<not>p) = p\<close> |
+  \<open>dual p = \<^bold>\<not>p\<close>
+
+
+
 lemma exactly_one_in_maximal': 
   assumes \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>p \<in> sub_C' \<phi>\<close>
-  shows \<open>p \<in> V \<longleftrightarrow> \<^bold>\<not> p \<notin> V \<and> (\<forall> p'. \<^bold>\<not>p' = p \<longrightarrow> p' \<notin> V)\<close> 
-proof
-  assume \<open>p \<in> V\<close>
+  shows \<open>p \<in> V \<longleftrightarrow> dual p \<notin> V\<close> 
+proof-
+  show ?thesis sorry
+qed
+(*
   then show \<open>\<^bold>\<not> p \<notin> V \<and> (\<forall> p'. \<^bold>\<not>p' = p \<longrightarrow> p' \<notin> V)\<close>
     using assms K_mp unfolding consistent_def maximal_def
     by (metis empty_subsetI insert_subset list.set(1) list.simps(15))
@@ -1024,7 +1032,7 @@ next
     then show ?thesis 
       using \<open>\<^bold>\<not> p' = p\<close> assms(1) assms(2) assms(3) consistent_extend_by_p maximal'_def by blast
   qed
-qed
+qed*)
 
 lemma deriv_in_maximal': 
   assumes \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>p \<in> sub_C' \<phi>\<close> \<open>A \<turnstile> p\<close>
@@ -1243,7 +1251,7 @@ abbreviation known :: \<open>'i fm set \<Rightarrow> 'i \<Rightarrow> 'i fm set\
   \<open>known V i \<equiv> {p. K i p \<in> V}\<close>
 
 abbreviation reach :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i \<Rightarrow> 'i fm set \<Rightarrow> 'i fm set set\<close> where
-  \<open>reach A i V \<equiv> {W. known V i \<subseteq> W}\<close>
+  \<open>reach A i V \<equiv> {W. \<forall> p \<in> known V i. A;W \<turnstile> p}\<close>
 
 abbreviation mcss :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm \<Rightarrow> 'i fm set set\<close> where
   \<open>mcss A \<phi> \<equiv> {W. W \<subseteq> sub_C' \<phi> \<and> consistent A W \<and> maximal' A \<phi> W}\<close>
@@ -1550,7 +1558,8 @@ next
     next
       case 2
       then have \<open>p \<notin> V\<close> 
-        using Imp.prems(3) Imp.prems(4) exactly_one_in_maximal' p_q_in_phi by blast
+        using Imp.prems(3) Imp.prems(4) exactly_one_in_maximal' p_q_in_phi dual.simps(1)
+        by (metis Imp.prems(2) subsetD)
       then show ?thesis 
         using Imp p_q_in_phi by blast
     qed
@@ -1703,15 +1712,12 @@ lemma AxT_reflexive:
 proof (safe)
   fix p
   assume \<open>K i p \<in> V\<close>
-  moreover have \<open>p \<in> sub_C (K i p)\<close> 
-    by (simp add: p_in_sub_C_p)
-  ultimately have \<open>p \<in> sub_C' \<phi>\<close> 
-    using \<open>V \<subseteq> sub_C' \<phi>\<close>  
-    by (smt (verit, del_insts) Un_iff fm.distinct(53) image_iff in_mono sub_C_transitive) (*remove smt call later if time*)
+  then have \<open>set [K i p] \<subseteq> V\<close> 
+    by simp
   moreover have \<open>A \<turnstile> K i p \<^bold>\<longrightarrow> p\<close>
     by (metis Ax AxT.simps assms(1) rev_predicate1D)
-  ultimately show \<open>p \<in> V\<close> 
-    using \<open>maximal' A \<phi> V\<close> \<open>K i p \<in> V\<close> assms(2) consistent_consequent maximal'_def by blast
+  ultimately show \<open>A; V \<turnstile> p\<close> 
+    by fastforce
 qed
 
 lemma reflexive\<^sub>T:
@@ -1762,16 +1768,26 @@ lemma strong_soundness\<^sub>K\<^sub>B: \<open>G \<turnstile>\<^sub>K\<^sub>B p 
   using strong_soundness soundness_AxB .
 
 lemma AxB_symmetric':
-  assumes \<open>AxB \<le> A\<close> \<open>consistent A V\<close> \<open>maximal A V\<close> \<open>consistent A W\<close> \<open>maximal A W\<close>
+  assumes \<open>AxB \<le> A\<close> \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>consistent A W\<close> \<open>maximal' A \<phi> W\<close> \<open>V \<subseteq> sub_C' \<phi>\<close> \<open>W \<subseteq> sub_C' \<phi>\<close>
     and \<open>W \<in> reach A i V\<close>
   shows \<open>V \<in> reach A i W\<close>
 proof -
   have \<open>\<forall>p. K i p \<in> W \<longrightarrow> p \<in> V\<close>
   proof (safe, rule ccontr)
     fix p
-    assume \<open>K i p \<in> W\<close> \<open>p \<notin> V\<close>
-    then have \<open>(\<^bold>\<not> p) \<in> V\<close>
-      using assms(2-3) exactly_one_in_maximal by fast
+    assume \<open>K i p \<in> W\<close> 
+    then have \<open>K i p \<in> sub_C' \<phi>\<close>
+      using assms(7) by auto
+    have \<open>A \<turnstile> dual p \<^bold>\<longrightarrow> K i (L i (dual p))\<close> 
+      by (metis Ax AxB.simps assms(1) rev_predicate1D)
+    assume \<open>p \<notin> V\<close>
+
+
+(*
+    then have \<open>K i (K i p) \<in> V\<close>
+      using \<open>W \<in> reach A i V\<close> 
+    then have \<open>dual p \<in> V\<close>
+      using assms exactly_one_in_maximal' 
     then have \<open>K i (L i (\<^bold>\<not> p)) \<in> V\<close>
       using assms(1-3) ax_in_maximal AxB.intros consequent_in_maximal by fast
     then have \<open>L i (\<^bold>\<not> p) \<in> W\<close>
@@ -1785,7 +1801,7 @@ proof -
     by blast
   then show ?thesis
     using assms(2-3) by simp
-qed
+qed*)
 
 lemma symmetric\<^sub>K\<^sub>B:
   assumes \<open>AxB \<le> A\<close>
