@@ -229,6 +229,14 @@ primrec imply :: \<open>'i fm list \<Rightarrow> 'i fm \<Rightarrow> 'i fm\<clos
   \<open>([] \<^bold>\<leadsto> q) = q\<close>
 | \<open>(p # ps \<^bold>\<leadsto> q) = (p \<^bold>\<longrightarrow> ps \<^bold>\<leadsto> q)\<close>
 
+primrec disjunct (\<open>\<^bold>\<Or> _\<close> [59] 60) where
+  \<open>\<^bold>\<Or>[] = \<^bold>\<bottom>\<close> |
+  \<open>\<^bold>\<Or>x # xs = x \<^bold>\<or> \<^bold>\<Or>xs\<close>
+
+primrec conjunct (\<open>\<^bold>\<And> _\<close> [64] 65) where
+  \<open>\<^bold>\<And>[] = \<^bold>\<top>\<close> |
+  \<open>\<^bold>\<And>x # xs = x \<^bold>\<and> \<^bold>\<And>xs\<close>
+
 abbreviation AK_assms (\<open>_; _ \<turnstile> _\<close> [50, 50, 50] 50) where
   \<open>A; G \<turnstile> p \<equiv> \<exists>qs. set qs \<subseteq> G \<and> (A \<turnstile> qs \<^bold>\<leadsto> p)\<close>
 
@@ -724,6 +732,52 @@ proof -
 qed
 
 lemma Ev_add_i: \<open>A \<turnstile> K i p \<^bold>\<longrightarrow> Ev g p \<^bold>\<longrightarrow> Ev (i # g) p\<close> sorry
+
+lemma elem_implies_disjunct: \<open>p \<in> set ps \<Longrightarrow> A \<turnstile> p \<^bold>\<longrightarrow> \<^bold>\<Or>ps\<close>
+proof (induct ps)
+  case (Cons a ps)
+  then show ?case
+    by (metis A1 disjunct.simps(2) eval.simps(3) eval.simps(5) imp_chain set_ConsD)
+qed simp
+
+lemma con_to_imp_assm: \<open>A \<turnstile> (p \<^bold>\<and> q \<^bold>\<longrightarrow> r) \<^bold>\<longrightarrow> (p \<^bold>\<longrightarrow> q \<^bold>\<longrightarrow> r)\<close> 
+  by (simp add: A1)
+
+lemma imp_to_con_assm: \<open>A \<turnstile> (p \<^bold>\<longrightarrow> q \<^bold>\<longrightarrow> r) \<^bold>\<longrightarrow> (p \<^bold>\<and> q \<^bold>\<longrightarrow> r)\<close> 
+  by (simp add: A1)
+
+lemma conjunct_implies_imply: \<open>A \<turnstile> (\<^bold>\<And> ps \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> (ps \<^bold>\<leadsto> q)\<close> 
+proof (induct ps)
+  case Nil
+  then show ?case 
+    by (simp add: A1)
+next
+  case (Cons a ps)
+  then show ?case
+    using con_to_imp_assm imp_chain 
+    by (metis con_imp_antecedents conjunct.simps(2) imply.simps(2))
+qed 
+
+lemma imply_implies_conjunct: \<open>A \<turnstile> (ps \<^bold>\<leadsto> q) \<^bold>\<longrightarrow> (\<^bold>\<And>ps \<^bold>\<longrightarrow> q)\<close>
+proof (induct ps)
+  case Nil
+  then show ?case 
+    by (simp add: A1)
+next
+  case (Cons a ps)
+  then show ?case sorry (*should be very easy*)
+qed
+
+lemma imply_implies_itself: \<open>A \<turnstile> ps \<^bold>\<leadsto> \<^bold>\<And>ps\<close>
+proof (induct ps)
+  case Nil
+  then show ?case 
+    by (simp add: A1)
+next
+  case (Cons a ps)
+  then show ?case
+    by (metis K_Boole conjunct_implies_imply imply.simps(2))
+qed
 
 section \<open>Strong Soundness\<close>
 
@@ -1246,9 +1300,10 @@ proof-
   qed 
 qed
 
-lemma 
-  assumes \<open>set (map set \<w>) = {W. W \<in> \<W> (canonical A \<phi>) \<and> canonical A \<phi>, W \<Turnstile> Co g p}\<close>
-  assumes \<open>\<phi>\<^sub>\<w> = fold (\<lambda> ps q. (fold (\<lambda> p r. p \<^bold>\<and> r) ps \<^bold>\<top>) \<^bold>\<or> q) \<w> \<^bold>\<bottom>\<close>
+(*exercise 3.28*)
+lemma Co_lemma:
+  assumes \<open>set (map set \<w>) = {W. W \<in> mcss A \<phi> \<and> canonical A \<phi>, W \<Turnstile> Co g p}\<close>
+  assumes \<open>\<phi>\<^sub>\<w> = disjunct (map conjunct \<w>)\<close>
   shows \<open>A \<turnstile> \<phi>\<^sub>\<w> \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close>
 proof (induct g)
   case Nil
@@ -1264,6 +1319,9 @@ next
   ultimately show ?case
     by (meson con_imp2 con_imp_antecedents imp_chain)
 qed
+
+lemma list_of_lists_if_finite_set_of_sets: \<open>finite W \<Longrightarrow> \<forall> V \<in> W. finite V \<Longrightarrow> \<exists> xs. set (map set xs) = W\<close>
+  by (induct W rule: finite.induct) (simp, metis finite_list insertCI list.simps(15) list.simps(9))
 
 lemma truth_lemma:
   fixes p :: \<open>('i :: countable) fm\<close>
@@ -1435,8 +1493,55 @@ next
     assume \<open>Co g p \<in> V\<close>
     show \<open>canonical A \<phi>, V \<Turnstile> Co g p\<close> sorry
   next
-    assume \<open>canonical A \<phi>, V \<Turnstile> Co g p\<close>
-    show \<open>Co g p \<in> V\<close> sorry
+    have \<open>finite (mcss A \<phi>)\<close> 
+      using finite_Collect_subsets sub_C'_finite by fastforce
+    then have \<open>finite {W. W \<in> mcss A \<phi> \<and> canonical A \<phi>, W \<Turnstile> Co g p}\<close> 
+      by (simp add: Collect_mono_iff rev_finite_subset)
+    moreover have \<open>\<forall> W \<in> {W. W \<in> mcss A \<phi> \<and> canonical A \<phi>, W \<Turnstile> Co g p}. finite W\<close>
+      by (smt (verit, del_insts) mem_Collect_eq rev_finite_subset sub_C'_finite) (*remove smt call later*)
+    ultimately obtain \<w> where \<w>_def:
+      \<open>set (map set \<w>) = {W. W \<in> mcss A \<phi> \<and> canonical A \<phi>, W \<Turnstile> Co g p}\<close> 
+      using list_of_lists_if_finite_set_of_sets by meson
+    moreover obtain \<phi>\<^sub>\<w> where \<phi>\<^sub>\<w>_def:
+      \<open>\<phi>\<^sub>\<w> = disjunct (map conjunct \<w>)\<close>
+      by simp
+    ultimately have \<open>A \<turnstile> \<phi>\<^sub>\<w> \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close>
+      using Co_lemma by blast
+    then have *:\<open>A \<turnstile> \<phi>\<^sub>\<w> \<^bold>\<longrightarrow> Co g p\<close>
+      by (simp add: RC1)
+
+    from Co have \<open>V \<in> mcss A \<phi>\<close> 
+      by blast
+    moreover assume \<open>canonical A \<phi>, V \<Turnstile> Co g p\<close>
+    ultimately have \<open>V \<in> {W. W \<in> mcss A \<phi> \<and> canonical A \<phi>, W \<Turnstile> Co g p}\<close> 
+      by simp
+    then have \<open>\<exists> \<v>. set \<v> = V \<and> \<v> \<in> set \<w>\<close>
+      using \<w>_def by (metis (no_types, lifting) image_iff list.set_map)
+    then obtain \<v> where \<v>_def: \<open>set \<v> = V \<and> \<v> \<in> set \<w>\<close> ..
+    then obtain \<phi>\<^sub>\<v> where \<phi>\<^sub>\<v>_def: \<open>\<phi>\<^sub>\<v> = \<^bold>\<And>\<v>\<close> 
+      by simp
+    have \<open>A \<turnstile> \<phi>\<^sub>\<v> \<^bold>\<longrightarrow> \<phi>\<^sub>\<w>\<close> 
+      using \<v>_def \<phi>\<^sub>\<v>_def \<phi>\<^sub>\<w>_def elem_implies_disjunct by (metis imageI image_set)
+    then have \<open>A \<turnstile> \<phi>\<^sub>\<v> \<^bold>\<longrightarrow> Co g p\<close>
+      using * imp_chain by auto
+    then have **:\<open>A \<turnstile> \<^bold>\<not>Co g p \<^bold>\<longrightarrow> \<^bold>\<not>\<phi>\<^sub>\<v>\<close> 
+      using K_trans R1 by blast
+    show \<open>Co g p \<in> V\<close> 
+    proof (rule ccontr)
+      assume \<open>Co g p \<notin> V\<close>
+      then have \<open>\<^bold>\<not>Co g p \<in> V\<close>
+        by (metis Co.prems(1) Co.prems(3) Co.prems(4) dual.simps(16) exactly_one_in_maximal')
+      then have \<open>A; V \<turnstile> \<^bold>\<not>Co g p\<close>
+        by (metis K_imply_head \<v>_def extract_from_list subset_refl)
+      from this ** have \<open>A; V \<turnstile> \<^bold>\<not>\<phi>\<^sub>\<v>\<close>
+        by (metis K_ImpI K_mp \<open>\<^bold>\<not> Co g p \<in> V\<close> imp_chain imply.simps(2) insert_subsetI list.simps(15))
+      moreover have \<open>A; V \<turnstile> \<phi>\<^sub>\<v>\<close> 
+        using imply_implies_itself \<v>_def \<phi>\<^sub>\<v>_def by auto
+      ultimately have \<open>A; V \<turnstile> \<^bold>\<bottom>\<close> 
+        by (metis K_imply_weaken K_right_mp \<v>_def order_refl)
+      then show False
+        using Co(4) by (simp add: consistent_def)
+      qed
   qed
 next
   case (Di g p)
