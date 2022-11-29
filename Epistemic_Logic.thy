@@ -1603,10 +1603,30 @@ next
           ultimately show ?thesis 
             using Co.hyps by blast
         qed
-        then show ?thesis sorry
+        then show ?thesis 
+          using 1 by simp
       next
         case 2
-        then show ?thesis sorry
+        then have *: \<open>\<And> W'. W' \<in> mcss A \<phi> \<Longrightarrow> Co g p \<in> W' \<Longrightarrow> canonical A \<phi>, W' \<Turnstile> Ev_n g p (n - 1)\<close>
+          using less by simp
+        then have \<open>i \<in> set g \<Longrightarrow> W' \<in> reach A i W \<Longrightarrow> W' \<in> mcss A \<phi> \<Longrightarrow> canonical A \<phi>, W' \<Turnstile> Ev_n g p (n - 1)\<close> for i W' 
+        proof-
+          assume \<open>i \<in> set g\<close> \<open>W' \<in> reach A i W\<close> \<open>W' \<in> mcss A \<phi>\<close>
+          have \<open>K i (p \<^bold>\<and> Co g p) \<in> W\<close> 
+            using \<open>\<forall> i \<in> set g. K i (p \<^bold>\<and> Co g p) \<in> W\<close> \<open>i \<in> set g\<close>  by simp
+          then have \<open>p \<^bold>\<and> Co g p \<in> W'\<close> 
+            using \<open>W' \<in> reach A i W\<close> by auto
+          moreover have \<open>A \<turnstile> p \<^bold>\<and> Co g p \<^bold>\<longrightarrow> Co g p\<close>
+            by (simp add: conE2)
+          ultimately have \<open>Co g p \<in> W'\<close> 
+            using \<open>Co g p \<in> sub_C' \<phi>\<close> \<open>W' \<in> mcss A \<phi>\<close> consistent_consequent maximal'_def by blast
+          then show ?thesis 
+            using  \<open>W' \<in> mcss A \<phi>\<close> * by simp
+        qed
+        moreover have \<open>Ev_n g p n = Ev g (Ev_n g p (n - 1))\<close> 
+          by (metis Ev_n.simps(2) Suc_diff_le diff_Suc_1 less.prems(1))
+        ultimately show ?thesis 
+          by simp
       qed
     qed
     ultimately show \<open>canonical A \<phi>, V \<Turnstile> Co g p\<close>
