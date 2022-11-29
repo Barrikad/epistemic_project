@@ -1312,7 +1312,9 @@ qed
 
 (*exercise 3.28*)
 lemma Co_lemma:
-  assumes \<open>set (map set \<w>) = {W. W \<in> mcss A \<phi> \<and> canonical A \<phi>, W \<Turnstile> Co g p}\<close>
+  fixes A \<phi> g p
+  defines \<open>WCo \<equiv> {W. W \<in> mcss A \<phi> \<and> canonical A \<phi>, W \<Turnstile> Co g p}\<close>
+  assumes \<open>set (map set \<w>) = WCo\<close>
   assumes \<open>\<phi>\<^sub>\<w> = disjunct (map conjunct \<w>)\<close>
   shows \<open>A \<turnstile> \<phi>\<^sub>\<w> \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close>
 proof (induct g)
@@ -1325,7 +1327,57 @@ next
   case (Cons i g)
   moreover have \<open>A \<turnstile> \<phi>\<^sub>\<w> \<^bold>\<longrightarrow> K i (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close> 
   proof-
-    show ?thesis sorry
+    (*formulas named after the tasks in the exercise*)
+    have a: \<open>w \<in> set \<w> \<Longrightarrow> A \<turnstile> \<^bold>\<And> w \<^bold>\<longrightarrow> K i p\<close> for w
+    proof-
+      show ?thesis sorry
+    qed
+    define WNCo where \<open>WNCo \<equiv> {W \<in> mcss A \<phi>. \<not> canonical A \<phi>, W \<Turnstile> Co g p}\<close>
+    have b: \<open>w \<in> set \<w> \<Longrightarrow> set w' \<in> WNCo \<Longrightarrow> A \<turnstile> \<^bold>\<And> w \<^bold>\<longrightarrow> K i (\<^bold>\<not> (\<^bold>\<And> w'))\<close> for w' w
+      sorry
+    obtain \<w>' where \<open>set (map set \<w>') = WNCo\<close> 
+    proof-
+      have \<open>finite (mcss A \<phi>)\<close>
+        using sub_C'_finite by fast
+      then have \<open>finite WNCo\<close> 
+        unfolding WNCo_def by fastforce
+      moreover have \<open>\<forall> w' \<in> WNCo. finite w'\<close> 
+        unfolding WNCo_def
+        by (metis (mono_tags, lifting) mem_Collect_eq rev_finite_subset sub_C'_finite)
+      ultimately show \<open>(\<And>\<w>'. set (map set \<w>') = WNCo \<Longrightarrow> thesis) \<Longrightarrow> thesis\<close>
+        using list_of_lists_if_finite_set_of_sets by blast
+    qed
+    have c: \<open>w \<in> set \<w> \<Longrightarrow> A \<turnstile> \<^bold>\<And> w \<^bold>\<longrightarrow> K i (p \<^bold>\<and> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>'))\<close> for w sorry
+    have d1: \<open>w \<in> set \<w> \<Longrightarrow> A \<turnstile> \<phi>\<^sub>\<w> \<^bold>\<longrightarrow> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>')\<close> for w sorry
+    have d2: \<open>w \<in> set \<w> \<Longrightarrow> A \<turnstile> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>') \<^bold>\<longrightarrow> \<phi>\<^sub>\<w>\<close> for w sorry
+    have e: \<open>w \<in> set \<w> \<Longrightarrow> A \<turnstile> \<^bold>\<And> w \<^bold>\<longrightarrow> K i (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close> for w sorry
+    consider \<open>\<w> = []\<close> | \<open>\<exists> w. w \<in> set \<w>\<close>
+      by fastforce
+    then show f: ?thesis 
+    proof -
+      have \<open>\<forall> p \<in> set ps. A \<turnstile> p \<^bold>\<longrightarrow> q \<Longrightarrow> A \<turnstile> \<^bold>\<Or> ps \<^bold>\<longrightarrow> q\<close> for ps q
+      proof (induct ps)
+        case Nil
+        then show ?case 
+          by (simp add: A1)
+      next
+        case (Cons p ps)
+        then have \<open>A \<turnstile> \<^bold>\<Or> ps \<^bold>\<longrightarrow> q\<close>
+          by simp
+        moreover have \<open>A \<turnstile> p \<^bold>\<longrightarrow> q\<close> 
+          using Cons by simp
+        moreover have \<open>A \<turnstile> (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> (\<^bold>\<Or> ps \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> p \<^bold>\<or> (\<^bold>\<Or> ps) \<^bold>\<longrightarrow> q\<close>
+          using A1 by force
+        ultimately have \<open>A \<turnstile> p \<^bold>\<or> (\<^bold>\<Or> ps) \<^bold>\<longrightarrow> q\<close> 
+          using R1 by blast
+        then show ?case 
+          by simp
+      qed
+      moreover have \<open>\<forall> \<phi>\<^sub>w \<in> set (map conjunct \<w>). A \<turnstile> \<phi>\<^sub>w \<^bold>\<longrightarrow> K i (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close> 
+        using e by simp
+      ultimately show ?thesis
+        using assms(3) by simp
+    qed
   qed
   moreover have \<open>A \<turnstile> K i (p \<^bold>\<and> \<phi>\<^sub>\<w>) \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> \<phi>\<^sub>\<w>) \<^bold>\<longrightarrow> Ev (i # g) (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close>
     by (simp add: Ev_add_i)
@@ -1641,7 +1693,6 @@ next
     using truth_lemma_Ev \<open>Ev g p \<in> sub_C' \<phi>\<close> by blast
 next
   case (Co g p) 
-  (*first we show some sub-terms of phi*)
   from \<open>Co g p \<in> sub_C' \<phi>\<close> have \<open>Co g p \<in> sub_C \<phi>\<close> 
     by (simp add: image_iff)
   then have \<open>p \<in> sub_C \<phi>\<close>
@@ -1733,7 +1784,7 @@ next
     then have \<open>finite {W. W \<in> mcss A \<phi> \<and> canonical A \<phi>, W \<Turnstile> Co g p}\<close> 
       by (simp add: Collect_mono_iff rev_finite_subset)
     moreover have \<open>\<forall> W \<in> {W. W \<in> mcss A \<phi> \<and> canonical A \<phi>, W \<Turnstile> Co g p}. finite W\<close>
-      by (smt (verit, del_insts) mem_Collect_eq rev_finite_subset sub_C'_finite) (*remove smt call later*)
+      by (smt (verit, del_insts) mem_Collect_eq rev_finite_subset sub_C'_finite) 
     ultimately obtain \<w> where \<w>_def:
       \<open>set (map set \<w>) = {W. W \<in> mcss A \<phi> \<and> canonical A \<phi>, W \<Turnstile> Co g p}\<close> 
       using list_of_lists_if_finite_set_of_sets by meson
@@ -1941,11 +1992,13 @@ abbreviation validT (\<open>_ \<TTurnstile>\<^sub>T _\<close> [50, 50] 50) where
 
 lemma strong_completeness\<^sub>T: \<open>G \<TTurnstile>\<^sub>T p \<Longrightarrow> G \<turnstile>\<^sub>T p\<close> if \<open>finite G\<close>
 proof-
-  assume \<open>G \<TTurnstile>\<^sub>T p\<close>
-  moreover have \<open>\<forall>(\<phi> :: ('i :: countable) fm). reflexive (canonical AxT \<phi>)\<close> 
+  have \<open>\<forall>(\<phi> :: ('i :: countable) fm). reflexive (canonical AxT \<phi>)\<close> 
     using reflexive\<^sub>T by auto
+  then have \<open>\<forall> qs. set qs \<subseteq> G \<longrightarrow> P_canonical reflexive AxT qs p\<close> 
+    by fast
+  moreover assume \<open>G \<TTurnstile>\<^sub>T p\<close>
   ultimately show ?thesis
-    using strong_completeness \<open>finite G\<close> sorry
+    using strong_completeness \<open>finite G\<close> by blast
 qed
 
 theorem main\<^sub>T: \<open>G \<TTurnstile>\<^sub>T p \<longleftrightarrow> G \<turnstile>\<^sub>T p\<close> if \<open>finite G\<close>
@@ -1954,7 +2007,7 @@ theorem main\<^sub>T: \<open>G \<TTurnstile>\<^sub>T p \<longleftrightarrow> G \
 corollary \<open>G \<TTurnstile>\<^sub>T p \<longrightarrow> reflexive; G \<TTurnstile>\<star> p\<close> if \<open>finite G\<close>
   using strong_soundness\<^sub>T[of G p] strong_completeness\<^sub>T[of G p] that by fast
 
-
+(*
 section \<open>System KB\<close>
 
 inductive AxB :: \<open>'i fm \<Rightarrow> bool\<close> where
@@ -2412,7 +2465,7 @@ qed (auto intro: AK.intros)
 
 corollary S5_S5'_assms: \<open>G \<turnstile>\<^sub>S\<^sub>5 p \<longleftrightarrow> G \<turnstile>\<^sub>S\<^sub>5' p\<close>
   using S5_S5' S5'_S5 by blast
-
+*)
 
 section \<open>Acknowledgements\<close>
 
