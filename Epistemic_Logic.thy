@@ -1,6 +1,7 @@
 (*
   File:      Epistemic_Logic.thy
   Author:    Asta Halkjær From
+  Modified by: Jakub Eugeniusz Janaszkiewicz & Simon Tobias Lund
 
   This work is a formalization of epistemic logic with countably many agents.
   It includes proofs of soundness and completeness for the axiom system K.
@@ -722,6 +723,8 @@ proof -
     by (auto intro: R1)
 qed
 
+lemma Ev_add_i: \<open>A \<turnstile> K i p \<^bold>\<longrightarrow> Ev g p \<^bold>\<longrightarrow> Ev (i # g) p\<close> sorry
+
 section \<open>Strong Soundness\<close>
 
 corollary soundness_imply:
@@ -990,50 +993,6 @@ lemma exactly_one_in_maximal':
 proof-
   show ?thesis sorry
 qed
-(*
-  then show \<open>\<^bold>\<not> p \<notin> V \<and> (\<forall> p'. \<^bold>\<not>p' = p \<longrightarrow> p' \<notin> V)\<close>
-    using assms K_mp unfolding consistent_def maximal_def
-    by (metis empty_subsetI insert_subset list.set(1) list.simps(15))
-next
-  assume a: \<open>\<^bold>\<not> p \<notin> V \<and> (\<forall> p'. \<^bold>\<not>p' = p \<longrightarrow> p' \<notin> V)\<close>
-  from assms(3) consider \<open>\<^bold>\<not>p \<in> sub_C' \<phi>\<close> | \<open>\<^bold>\<not>p \<notin> sub_C' \<phi>\<close>
-    by blast
-  then show \<open>p \<in> V\<close>
-  proof cases
-    case 1
-    then have \<open>\<^bold>\<not>p \<notin> V\<close>
-      using a by simp
-    moreover have \<open>\<^bold>\<not>p \<in> sub_C' \<phi>\<close>
-      using 1 assms(3) by blast
-    ultimately have \<open>\<not> consistent A ({\<^bold>\<not>p} \<union> V)\<close>
-      using assms unfolding maximal'_def by blast
-    then have \<open>consistent A ({p} \<union> V)\<close>  
-      using \<open>consistent A V\<close> consistent_extend_by_p by auto
-    then show ?thesis
-      using assms maximal'_def by blast
-  next
-    case 2
-    then obtain p' where \<open>\<^bold>\<not>p' = p\<close> 
-      using assms(3) by auto
-    then have \<open>p' \<in> sub_C' \<phi>\<close>
-    proof-
-      have \<open>\<^bold>\<not>p' \<in> sub_C' \<phi> \<Longrightarrow> p' \<in> sub_C \<phi>\<close> 
-      proof (induct \<phi>)
-        case (Imp \<phi>1 \<phi>2)
-        then show ?case 
-          using Un_iff fm.inject(4) p_in_sub_C_p by fastforce
-      qed auto
-      then show ?thesis
-        using \<open>\<^bold>\<not> p' = p\<close> assms(3) by blast
-    qed
-    moreover have \<open>p' \<notin> V\<close>
-      using a \<open>\<^bold>\<not>p' = p\<close> by simp
-    ultimately have \<open>\<not> consistent A ({p'} \<union> V)\<close>
-      using assms(2) maximal'_def by auto
-    then show ?thesis 
-      using \<open>\<^bold>\<not> p' = p\<close> assms(1) assms(2) assms(3) consistent_extend_by_p maximal'_def by blast
-  qed
-qed*)
 
 lemma deriv_in_maximal': 
   assumes \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>p \<in> sub_C' \<phi>\<close> \<open>A \<turnstile> p\<close>
@@ -1248,151 +1207,17 @@ subsection \<open>Canonical model\<close>
 abbreviation pi :: \<open>'i fm set \<Rightarrow> id \<Rightarrow> bool\<close> where
   \<open>pi V x \<equiv> Pro x \<in> V\<close>
 
-abbreviation known :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm set \<Rightarrow> 'i \<Rightarrow> 'i fm set\<close> where
-  \<open>known A V i \<equiv> {p. A; V \<turnstile> K i p}\<close> (*necessary to change this because axioms might imply knowledge formulas not in sub_C' p*)
+abbreviation known :: \<open>'i fm set \<Rightarrow> 'i \<Rightarrow> 'i fm set\<close> where
+  \<open>known V i \<equiv> {p. K i p \<in> V}\<close> (*necessary to change this because axioms might imply knowledge formulas not in sub_C' p*)
 
 abbreviation reach :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i \<Rightarrow> 'i fm set \<Rightarrow> 'i fm set set\<close> where
-  \<open>reach A i V \<equiv> {W. \<forall> p \<in> known A V i. A; W \<turnstile> p}\<close> 
+  \<open>reach A i V \<equiv> {W. known V i \<subseteq> W}\<close> 
 
 abbreviation mcss :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm \<Rightarrow> 'i fm set set\<close> where
   \<open>mcss A \<phi> \<equiv> {W. W \<subseteq> sub_C' \<phi> \<and> consistent A W \<and> maximal' A \<phi> W}\<close>
 
 abbreviation canonical :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm \<Rightarrow> ('i, 'i fm set) kripke\<close> where
   \<open>canonical A \<phi> \<equiv> \<lparr>\<W> = mcss A \<phi>, \<K> = reach A, \<pi> = pi\<rparr>\<close>
-(*
-lemma truth_lemma_K: 
-  fixes p :: \<open>('i :: countable) fm\<close>
-  assumes prems: \<open>V \<subseteq> sub_C' \<phi>\<close> \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>p \<in> sub_C' \<phi>\<close>
-  assumes hyp:\<open>\<And> V. V \<subseteq> sub_C' \<phi> \<Longrightarrow> consistent A V \<Longrightarrow> maximal' A \<phi> V \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> p\<close>
-  shows \<open>K i p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> K i p\<close>
-proof safe
-  assume \<open>K i p \<in> V\<close>
-  then show \<open>canonical A \<phi>, V \<Turnstile> K i p\<close>
-    using hyp by auto
-next
-  assume \<open>canonical A \<phi>, V \<Turnstile> K i p\<close>
-
-  have \<open>\<not> consistent A ({\<^bold>\<not> p} \<union> known V i)\<close>
-  proof
-    show False sorry
-  qed
-
-  then obtain W where W:
-    \<open>{\<^bold>\<not> p} \<union> W \<subseteq> {\<^bold>\<not> p} \<union> known V i\<close> \<open>(\<^bold>\<not> p) \<notin> W\<close> \<open>finite W\<close> \<open>\<not> consistent A ({\<^bold>\<not> p} \<union> W)\<close>
-    using exists_finite_inconsistent by metis
-
-  obtain L where L: \<open>set L = W\<close>
-    using \<open>finite W\<close> finite_list by blast
-
-  then have \<open>A \<turnstile> L \<^bold>\<leadsto> p\<close>
-    using W(4) inconsistent_imply by blast
-  then have \<open>A \<turnstile> K i (L \<^bold>\<leadsto> p)\<close>
-    using R2 by fast
-  then have \<open>A \<turnstile> map (K i) L \<^bold>\<leadsto> K i p\<close>
-    using K_distrib_K_imp by fast
-  then have \<open>(map (K i) L \<^bold>\<leadsto> K i p) \<in> V\<close>
-    using deriv_in_maximal prems by blast
-  then show \<open>K i p \<in> V\<close>
-    using L W(1-2)
-  proof (induct L arbitrary: W)
-    case (Cons a L)
-    then have \<open>K i a \<in> V\<close>
-      by auto
-    then have \<open>(map (K i) L \<^bold>\<leadsto> K i p) \<in> V\<close>
-      using Cons(2) \<open>consistent A V\<close> \<open>maximal A V\<close> consequent_in_maximal by auto
-    then show ?case
-      using Cons by auto
-  qed simp
-qed
-
-lemma truth_lemma_Ev: 
-  fixes p :: \<open>('i :: countable) fm\<close>
-  assumes \<open>consistent A V\<close> \<open>maximal A V\<close>
-  assumes \<open>\<And> V. consistent A V \<Longrightarrow> maximal A V \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A, V \<Turnstile> p\<close>
-  shows \<open>Ev g p \<in> V \<longleftrightarrow> canonical A, V \<Turnstile> Ev g p\<close>
-proof (induct g)
-  case Nil
-  thus ?case
-    using Ev_empty_group assms(1,2) deriv_in_maximal by fastforce
-next
-  case (Cons a as)
-  have \<open>Ev (a # as) p \<in> V \<Longrightarrow> canonical A, V \<Turnstile> Ev (a # as) p\<close>
-  proof -
-    assume \<open>Ev (a # as) p \<in> V\<close>
-    hence \<open>Ev as p \<in> V\<close>
-      by (meson EvExt consistent_consequent maximal_def assms(1,2) set_subset_Cons)
-    hence *: \<open>canonical A, V \<Turnstile> Ev as p\<close>
-      using local.Cons by blast
-    then have \<open>Ev [a] p \<in> V\<close>
-      by (metis (mono_tags, lifting) EvExt \<open>Ev (a # as) p \<in> V\<close> bot.extremum consistent_consequent empty_set insert_subset list.set(2) list.set_intros(1) maximal_def assms(1,2))
-    also have \<open>Ev [a] p \<^bold>\<longrightarrow> unfold_Ev [a] p \<in> V\<close>
-      using C1a deriv_in_maximal assms(1,2) by blast
-    moreover have \<open>unfold_Ev [a] p = K a p \<^bold>\<and> \<^bold>\<top>\<close>
-      by simp
-    ultimately have \<open>K a p \<in> V\<close>
-      by (metis conE1 consequent_in_maximal deriv_in_maximal assms(1,2))
-    hence \<open>canonical A, V \<Turnstile> K a p\<close>
-      using assms(3) by fastforce
-    thus \<open>canonical A, V \<Turnstile> Ev (a # as) p\<close>
-      using * by force
-  qed
-  moreover have \<open>canonical A, V \<Turnstile> Ev (a # as) p \<Longrightarrow> Ev (a # as) p \<in> V\<close>
-  proof -
-    assume \<open>canonical A, V \<Turnstile> Ev (a # as) p\<close>
-    hence \<open>canonical A, V \<Turnstile> K a p\<close> and right: \<open>canonical A, V \<Turnstile> Ev as p\<close>
-      by auto
-    hence left_in: \<open>K a p \<in> V\<close>
-      using assms truth_lemma_K by blast
-    with right have right_in: \<open>Ev as p \<in> V\<close>
-      using local.Cons by blast
-    then have unfold_axiom: \<open>unfold_Ev (a # as) p \<^bold>\<longrightarrow> Ev (a # as) p \<in> V\<close>
-      using C1b deriv_in_maximal assms(1,2) by blast
-    then have \<open>unfold_Ev (a # as) p = K a p \<^bold>\<and> unfold_Ev as p\<close>
-      by force
-    hence \<open>Ev as p \<^bold>\<longrightarrow> unfold_Ev as p \<in> V\<close>
-      using C1a deriv_in_maximal assms(1,2) by blast
-    with right_in have \<open>unfold_Ev as p \<in> V\<close>
-      using assms(1,2) consequent_in_maximal by blast
-    with left_in have \<open>K a p \<^bold>\<and> unfold_Ev as p \<in> V\<close>
-      by (metis K_imply_head con_imp_antecedents consequent_in_maximal deriv_in_maximal imply.simps(1,2) assms(1,2))
-    hence \<open>unfold_Ev (a # as) p \<in> V\<close>
-      by simp
-    with unfold_axiom show \<open>Ev (a # as) p \<in> V\<close>
-      using consequent_in_maximal assms(1,2) by blast
-  qed
-  ultimately show ?case 
-    by blast
-qed
-
-lemma truth_lemma_Ev_n: 
-  fixes p :: \<open>('i :: countable) fm\<close>
-  assumes prem1: \<open>consistent A V\<close> and prem2: \<open>maximal A V\<close>
-  assumes hyp:\<open>\<And> V. consistent A V \<Longrightarrow> maximal A V \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A, V \<Turnstile> p\<close>
-  shows \<open>n \<ge> 1 \<Longrightarrow> Ev_n g p n \<in> V \<longleftrightarrow> canonical A, V \<Turnstile> Ev_n g p n\<close>(*might need to strengthen the claim like I did for soundness*)
-  using prem1 prem2
-proof (induct n arbitrary: V rule: less_induct)
-  case (less n')
-  then consider \<open>n' = 1\<close> | \<open>n' > 1\<close> 
-    by linarith
-  then show ?case 
-  proof cases
-    case 1
-    then show ?thesis 
-      using less.prems hyp truth_lemma_Ev by force
-  next
-    case 2
-    then have \<open>\<And> V. 
-      consistent A V \<Longrightarrow> maximal A V \<Longrightarrow>
-      (Ev_n g p (n' - 1) \<in> V) = (canonical A, V \<Turnstile> Ev_n g p (n' - 1))\<close>
-      using less by simp
-    then have \<open>(Ev g (Ev_n g p (n' - 1)) \<in> V) = (canonical A, V \<Turnstile> Ev g (Ev_n g p (n' - 1)))\<close>
-      using less truth_lemma_Ev by blast
-    then show ?thesis 
-      by (metis (no_types, lifting) Ev_n.simps(2) less.prems(1) 
-          ordered_cancel_comm_monoid_diff_class.add_diff_inverse plus_1_eq_Suc)
-  qed
-qed
-*)
 
 lemma sub_C_transitive: \<open>p \<in> sub_C q \<Longrightarrow> q \<in> sub_C r \<Longrightarrow> p \<in> sub_C r\<close>
   by (induct r, induct q, auto)
@@ -1421,6 +1246,24 @@ proof-
   qed 
 qed
 
+lemma 
+  assumes \<open>set (map set \<w>) = {W. W \<in> \<W> (canonical A \<phi>) \<and> canonical A \<phi>, W \<Turnstile> Co g p}\<close>
+  assumes \<open>\<phi>\<^sub>\<w> = fold (\<lambda> ps q. (fold (\<lambda> p r. p \<^bold>\<and> r) ps \<^bold>\<top>) \<^bold>\<or> q) \<w> \<^bold>\<bottom>\<close>
+  shows \<open>A \<turnstile> \<phi>\<^sub>\<w> \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close>
+proof (induct g)
+  case Nil
+  have \<open>A \<turnstile> Ev [] (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close> 
+    by (simp add: Ev_empty_group)
+  then show ?case 
+    using R1 conE1 con_imp_antecedents by blast
+next
+  case (Cons i g)
+  moreover have \<open>A \<turnstile> \<phi>\<^sub>\<w> \<^bold>\<longrightarrow> K i (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close> sorry
+  moreover have \<open>A \<turnstile> K i (p \<^bold>\<and> \<phi>\<^sub>\<w>) \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> \<phi>\<^sub>\<w>) \<^bold>\<longrightarrow> Ev (i # g) (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close>
+    by (simp add: Ev_add_i)
+  ultimately show ?case
+    by (meson con_imp2 con_imp_antecedents imp_chain)
+qed
 
 lemma truth_lemma:
   fixes p :: \<open>('i :: countable) fm\<close>
@@ -1587,7 +1430,14 @@ next
   then show ?case sorry
 next
   case (Co g p) 
-  then show ?case sorry
+  show ?case 
+  proof safe
+    assume \<open>Co g p \<in> V\<close>
+    show \<open>canonical A \<phi>, V \<Turnstile> Co g p\<close> sorry
+  next
+    assume \<open>canonical A \<phi>, V \<Turnstile> Co g p\<close>
+    show \<open>Co g p \<in> V\<close> sorry
+  qed
 next
   case (Di g p)
   then show ?case sorry
@@ -1623,8 +1473,12 @@ abbreviation valid :: \<open>(('i :: countable, 'i fm set) kripke \<Rightarrow> 
   (\<open>_; _ \<TTurnstile> _\<close> [50, 50, 50] 50)
   where \<open>P; G \<TTurnstile> p \<equiv> P; G \<TTurnstile>\<star> p\<close>
 
+abbreviation P_canonical where
+  \<open>P_canonical P A qs p \<equiv> P (canonical A ((\<^bold>\<not> p) # qs \<^bold>\<leadsto> \<^bold>\<bottom>))\<close>
+
 theorem strong_completeness:
-  assumes \<open>finite G\<close> and \<open>P; G \<TTurnstile> (p :: ('i :: countable) fm)\<close> and \<open>\<forall> (\<phi> :: ('i :: countable) fm). P (canonical A \<phi>)\<close>
+  assumes \<open>finite G\<close> and \<open>P; G \<TTurnstile> (p :: ('i :: countable) fm)\<close> and 
+    \<open>\<forall> qs. set qs = G \<longrightarrow> P_canonical P A qs p\<close>
   shows \<open>A; G \<turnstile> p\<close>
 proof (rule ccontr)
   assume \<open>\<nexists>qs. set qs \<subseteq> G \<and> (A \<turnstile> qs \<^bold>\<leadsto> p)\<close>
@@ -1656,15 +1510,15 @@ proof (rule ccontr)
     using \<open>consistent A ?S\<close> consistent_Extend' maximal_Extend' surj_from_nat Extend'_subset_sub_C mem_Collect_eq 1 
     by (smt (verit))
   ultimately have \<open>?M, ?V \<Turnstile> p\<close> 
-    using \<open>set qs = G\<close> assms(2) assms(3) frame.select_convs(1) by fast
+    using \<open>set qs = G\<close> assms(2) assms(3) frame.select_convs(1) by auto
   then show False 
     using \<open>?M, ?V \<Turnstile> (\<^bold>\<not> p)\<close> by simp
 qed
 
 corollary completeness:
-  assumes \<open>P; {} \<TTurnstile> p\<close> and \<open>\<forall> (\<phi> :: ('i :: countable) fm). P (canonical A \<phi>)\<close>
+  assumes \<open>P; {} \<TTurnstile> p\<close> and \<open>P_canonical P A [] p\<close>
   shows \<open>A \<turnstile> p\<close>
-  using assms strong_completeness[where G=\<open>{}\<close>] by simp
+  using assms strong_completeness[where G=\<open>{}\<close>] sorry
 
 corollary completeness\<^sub>A:
   assumes \<open>(\<lambda>_. True); {} \<TTurnstile> p\<close>
@@ -1706,21 +1560,22 @@ lemma soundness_AxT: \<open>AxT p \<Longrightarrow> reflexive M \<Longrightarrow
 
 lemma strong_soundness\<^sub>T: \<open>G \<turnstile>\<^sub>T p \<Longrightarrow> reflexive; G \<TTurnstile>\<star> p\<close>
   using strong_soundness soundness_AxT .
-
 lemma AxT_reflexive:
   assumes \<open>AxT \<le> A\<close> and \<open>consistent A V\<close> and \<open>maximal' A \<phi> V\<close> and \<open>V \<subseteq> sub_C' \<phi>\<close>
   shows \<open>V \<in> reach A i V\<close>
 proof (safe)
-  fix p qs
-  assume \<open>set qs \<subseteq> V\<close>
-  assume \<open>A \<turnstile> qs \<^bold>\<leadsto> K i p\<close>
+  fix p
+  assume \<open>K i p \<in> V\<close>
+  moreover have \<open>p \<in> sub_C (K i p)\<close> 
+    by (simp add: p_in_sub_C_p)
+  ultimately have \<open>p \<in> sub_C' \<phi>\<close> 
+    using \<open>V \<subseteq> sub_C' \<phi>\<close>  
+    by (smt (verit, del_insts) Un_iff fm.distinct(53) image_iff in_mono sub_C_transitive) (*remove smt call later if time*)
   moreover have \<open>A \<turnstile> K i p \<^bold>\<longrightarrow> p\<close>
     by (metis Ax AxT.simps assms(1) rev_predicate1D)
-  ultimately have \<open>A \<turnstile> qs \<^bold>\<leadsto> p\<close> 
-    by (metis K_imply_head K_right_mp R1 imply.simps(2))
-  then show \<open>A; V \<turnstile> p\<close> 
-    using \<open>set qs \<subseteq> V\<close> by auto
-qed                    
+  ultimately show \<open>p \<in> V\<close> 
+    using \<open>maximal' A \<phi> V\<close> \<open>K i p \<in> V\<close> assms(2) consistent_consequent maximal'_def by blast
+qed
 
 lemma reflexive\<^sub>T:
   assumes \<open>AxT \<le> A\<close>
@@ -1843,7 +1698,10 @@ proof -
   have \<open>\<forall> p. A; W \<turnstile> K i p \<longrightarrow> A; V \<turnstile> p\<close> 
   proof (rule allI, rule impI)
     fix p 
+    from \<open>W \<in> reach A i V\<close> have *:\<open>\<forall> p. A; V \<turnstile> K i p \<longrightarrow> A; W \<turnstile> p\<close>
+      by simp
     assume \<open>A; W \<turnstile> K i p\<close>
+    moreover have \<open>A; W \<turnstile> K i p\<close>
     show \<open>A; V \<turnstile> p\<close> sorry
   qed
   then show ?thesis
