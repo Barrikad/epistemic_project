@@ -14,6 +14,11 @@
 
 theory Epistemic_Logic imports "HOL-Library.Countable" begin
 
+section \<open>Auxiliary\<close>
+
+lemma list_of_lists_if_finite_set_of_sets: \<open>finite W \<Longrightarrow> \<forall> V \<in> W. finite V \<Longrightarrow> \<exists> xs. set (map set xs) = W\<close>
+  by (induct W rule: finite.induct) (simp, metis finite_list insertCI list.simps(15) list.simps(9))
+
 section \<open>Syntax\<close>
 
 type_synonym id = string
@@ -1313,15 +1318,82 @@ proof (induct g)
     using R1 conE1 con_imp_antecedents by blast
 next
   case (Cons i g)
-  moreover have \<open>A \<turnstile> \<phi>\<^sub>\<w> \<^bold>\<longrightarrow> K i (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close> sorry
+  moreover have \<open>A \<turnstile> \<phi>\<^sub>\<w> \<^bold>\<longrightarrow> K i (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close> 
+  proof-
+    show ?thesis sorry
+  qed
   moreover have \<open>A \<turnstile> K i (p \<^bold>\<and> \<phi>\<^sub>\<w>) \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> \<phi>\<^sub>\<w>) \<^bold>\<longrightarrow> Ev (i # g) (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close>
     by (simp add: Ev_add_i)
   ultimately show ?case
     by (meson con_imp2 con_imp_antecedents imp_chain)
 qed
 
-lemma list_of_lists_if_finite_set_of_sets: \<open>finite W \<Longrightarrow> \<forall> V \<in> W. finite V \<Longrightarrow> \<exists> xs. set (map set xs) = W\<close>
-  by (induct W rule: finite.induct) (simp, metis finite_list insertCI list.simps(15) list.simps(9))
+
+lemma truth_lemma_K: 
+  fixes p :: \<open>('i :: countable) fm\<close>
+  assumes prems: \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>p \<in> sub_C' \<phi>\<close> \<open>V \<subseteq> sub_C' \<phi>\<close>
+  assumes hyp: \<open>\<And> V. 
+    V \<subseteq> sub_C' \<phi> \<Longrightarrow> consistent A V \<Longrightarrow> maximal' A \<phi> V \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> p\<close>
+  shows \<open>K i p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> K i p\<close>
+proof-
+  show ?thesis sorry
+qed
+
+lemma truth_lemma_Ev: 
+  fixes p :: \<open>('i :: countable) fm\<close>
+  assumes prems: \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>p \<in> sub_C' \<phi>\<close> \<open>V \<subseteq> sub_C' \<phi>\<close>
+  assumes hyp: \<open>\<And> V. 
+    V \<subseteq> sub_C' \<phi> \<Longrightarrow> consistent A V \<Longrightarrow> maximal' A \<phi> V \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> p\<close>
+  shows \<open>Ev g p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> Ev g p\<close>
+proof (induct g)
+  case Nil
+  thus ?case sorry
+next
+  case (Cons a as)
+  have \<open>Ev (a # as) p \<in> V \<Longrightarrow> canonical A \<phi>, V \<Turnstile> Ev (a # as) p\<close>
+  proof -
+    assume \<open>Ev (a # as) p \<in> V\<close>
+    thus \<open>canonical A \<phi>, V \<Turnstile> Ev (a # as) p\<close>  sorry
+  qed
+  moreover have \<open>canonical A \<phi>, V \<Turnstile> Ev (a # as) p \<Longrightarrow> Ev (a # as) p \<in> V\<close>
+  proof -
+    assume \<open>canonical A \<phi>, V \<Turnstile> Ev (a # as) p\<close>
+    thus \<open>Ev (a # as) p \<in> V\<close> sorry
+  qed
+  ultimately show ?case 
+    by blast
+qed
+
+lemma truth_lemma_Ev_n: 
+  fixes p :: \<open>('i :: countable) fm\<close>
+  assumes prems: \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>p \<in> sub_C' \<phi>\<close> \<open>V \<subseteq> sub_C' \<phi>\<close>
+  assumes hyp:\<open>\<And> V. 
+    V \<subseteq> sub_C' \<phi> \<Longrightarrow> consistent A V \<Longrightarrow> maximal' A \<phi> V \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> p\<close>
+  shows \<open>n \<ge> 1 \<Longrightarrow> Ev_n g p n \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> Ev_n g p n\<close>
+  using prems
+proof (induct n arbitrary: V rule: less_induct)
+  case (less n')
+  then consider \<open>n' = 1\<close> | \<open>n' > 1\<close> 
+    by linarith
+  then show ?case 
+  proof cases
+    case 1
+    then show ?thesis 
+      using less.prems hyp truth_lemma_Ev by force
+  next
+    case 2
+    then have \<open>\<And> V. 
+      consistent A V \<Longrightarrow> maximal' A \<phi> V \<Longrightarrow> p \<in> sub_C' \<phi> \<Longrightarrow> V \<subseteq> sub_C' \<phi> \<Longrightarrow>
+      (Ev_n g p (n' - 1) \<in> V) = (canonical A \<phi>, V \<Turnstile> Ev_n g p (n' - 1))\<close>
+      using less by simp
+    moreover have \<open>Ev_n g p (n' - 1) \<in> sub_C' \<phi>\<close> sorry
+    ultimately have \<open>(Ev g (Ev_n g p (n' - 1)) \<in> V) = (canonical A \<phi>, V \<Turnstile> Ev g (Ev_n g p (n' - 1)))\<close>
+      using less truth_lemma_Ev by blast
+    then show ?thesis 
+      by (metis (no_types, lifting) Ev_n.simps(2) less.prems(1) 
+          ordered_cancel_comm_monoid_diff_class.add_diff_inverse plus_1_eq_Suc)
+  qed
+qed
 
 lemma truth_lemma:
   fixes p :: \<open>('i :: countable) fm\<close>
