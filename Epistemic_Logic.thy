@@ -1341,7 +1341,7 @@ qed
 
 lemma truth_lemma_Ev: 
   fixes p :: \<open>('i :: countable) fm\<close>
-  assumes prems: \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>p \<in> sub_C' \<phi>\<close> \<open>V \<subseteq> sub_C' \<phi>\<close>
+  assumes prems: \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>Ev g p \<in> sub_C' \<phi>\<close> \<open>V \<subseteq> sub_C' \<phi>\<close>
   assumes hyp: \<open>\<And> V. 
     V \<subseteq> sub_C' \<phi> \<Longrightarrow> consistent A V \<Longrightarrow> maximal' A \<phi> V \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> p\<close>
   shows \<open>Ev g p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> Ev g p\<close>
@@ -1362,37 +1362,6 @@ next
   qed
   ultimately show ?case 
     by blast
-qed
-
-lemma truth_lemma_Ev_n: 
-  fixes p :: \<open>('i :: countable) fm\<close>
-  assumes prems: \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>p \<in> sub_C' \<phi>\<close> \<open>V \<subseteq> sub_C' \<phi>\<close>
-  assumes hyp:\<open>\<And> V. 
-    V \<subseteq> sub_C' \<phi> \<Longrightarrow> consistent A V \<Longrightarrow> maximal' A \<phi> V \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> p\<close>
-  shows \<open>n \<ge> 1 \<Longrightarrow> Ev_n g p n \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> Ev_n g p n\<close>
-  using prems
-proof (induct n arbitrary: V rule: less_induct)
-  case (less n')
-  then consider \<open>n' = 1\<close> | \<open>n' > 1\<close> 
-    by linarith
-  then show ?case 
-  proof cases
-    case 1
-    then show ?thesis 
-      using less.prems hyp truth_lemma_Ev by force
-  next
-    case 2
-    then have \<open>\<And> V. 
-      consistent A V \<Longrightarrow> maximal' A \<phi> V \<Longrightarrow> p \<in> sub_C' \<phi> \<Longrightarrow> V \<subseteq> sub_C' \<phi> \<Longrightarrow>
-      (Ev_n g p (n' - 1) \<in> V) = (canonical A \<phi>, V \<Turnstile> Ev_n g p (n' - 1))\<close>
-      using less by simp
-    moreover have \<open>Ev_n g p (n' - 1) \<in> sub_C' \<phi>\<close> sorry
-    ultimately have \<open>(Ev g (Ev_n g p (n' - 1)) \<in> V) = (canonical A \<phi>, V \<Turnstile> Ev g (Ev_n g p (n' - 1)))\<close>
-      using less truth_lemma_Ev by blast
-    then show ?thesis 
-      by (metis (no_types, lifting) Ev_n.simps(2) less.prems(1) 
-          ordered_cancel_comm_monoid_diff_class.add_diff_inverse plus_1_eq_Suc)
-  qed
 qed
 
 lemma truth_lemma:
