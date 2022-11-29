@@ -784,6 +784,8 @@ next
     by (metis K_Boole conjunct_implies_imply imply.simps(2))
 qed
 
+lemma Ev_implies_K: \<open>i \<in> set g \<Longrightarrow> A \<turnstile> Ev g p \<^bold>\<longrightarrow> K i p\<close> sorry
+
 section \<open>Strong Soundness\<close>
 
 corollary soundness_imply:
@@ -1543,23 +1545,38 @@ next
     using truth_lemma_Ev by force
 next
   case (Co g p) 
+  from \<open>Co g p \<in> sub_C' \<phi>\<close> have \<open>Co g p \<in> sub_C \<phi>\<close> 
+    by (simp add: image_iff)
+  then have \<open>p \<in> sub_C \<phi>\<close>
+  proof (induct \<phi>)
+    case (Co g \<phi>)
+    then show ?case
+      using p_in_sub_C_p by fastforce
+  qed auto 
+  then have \<open>p \<in> sub_C' \<phi>\<close> 
+    by simp
   show ?case 
   proof safe
     assume \<open>Co g p \<in> V\<close>
     then have \<open>Co g p \<in> sub_C \<phi>\<close> 
       using Co.prems(1) by auto
-    then have \<open>Ev g (p \<^bold>\<and> Co g p) \<in> sub_C \<phi>\<close>
+    then have \<open>Ev g (p \<^bold>\<and> Co g p) \<in> sub_C \<phi>\<close> \<open>\<forall> i \<in> set g. K i (p \<^bold>\<and> Co g p) \<in> sub_C \<phi>\<close>
       by (induct \<phi>) auto
-    then have \<open>Ev g (p \<^bold>\<and> Co g p) \<in> sub_C' \<phi>\<close> 
-      by simp
+    then have \<open>Ev g (p \<^bold>\<and> Co g p) \<in> sub_C' \<phi>\<close> \<open>\<forall> i \<in> set g. K i (p \<^bold>\<and> Co g p) \<in> sub_C' \<phi>\<close>
+      by simp_all
     moreover have \<open>A \<turnstile> Co g p \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> Co g p)\<close> 
       by (simp add: C2)
     ultimately have \<open>Ev g (p \<^bold>\<and> Co g p) \<in> V\<close>
       using Co.prems(3) Co.prems(4) \<open>Co g p \<in> V\<close> consistent_consequent maximal'_def by blast
+    moreover have \<open>\<forall> i \<in> set g. A \<turnstile> Ev g (p \<^bold>\<and> Co g p) \<^bold>\<longrightarrow> K i (p \<^bold>\<and> Co g p)\<close>
+      by (simp add: Ev_implies_K)
+    ultimately have \<open>\<forall> i \<in> set g. K i (p \<^bold>\<and> Co g p) \<in> V\<close>
+      using \<open>\<forall> i \<in> set g. K i (p \<^bold>\<and> Co g p) \<in> sub_C' \<phi>\<close>
+        Co.prems(3) Co.prems(4) consistent_consequent maximal'_def by blast
     from Co have \<open>n \<ge> 1 \<Longrightarrow> canonical A \<phi>, V \<Turnstile> Ev_n g p n\<close> for n 
     proof (induct n rule: less_induct)
       case (less n)(*note: this is a new n*)
-      then consider \<open>n = 0\<close> | \<open>n > 0\<close>
+      then consider \<open>n = 1\<close> | \<open>n > 1\<close>
         by linarith
       then show ?case 
       proof cases
@@ -1567,11 +1584,21 @@ next
         have \<open>i \<in> set g \<Longrightarrow> W \<in> reach A i V \<Longrightarrow> W \<in> mcss A \<phi> \<Longrightarrow> canonical A \<phi>, W \<Turnstile> p\<close> for i W
         proof-
           assume \<open>i \<in> set g\<close> \<open>W \<in> reach A i V\<close> \<open>W \<in> mcss A \<phi>\<close>
-          show ?thesis
-            using "1" less.prems(1) by auto
+          have \<open>K i (p \<^bold>\<and> Co g p) \<in> V\<close> 
+            using \<open>\<forall> i \<in> set g. K i (p \<^bold>\<and> Co g p) \<in> V\<close> \<open>i \<in> set g\<close>  by simp
+          then have \<open>p \<^bold>\<and> Co g p \<in> W\<close> 
+            using \<open>W \<in> reach A i V\<close> by auto
+          moreover have \<open>A \<turnstile> p \<^bold>\<and> Co g p \<^bold>\<longrightarrow> p\<close>
+            by (simp add: conE1)
+          ultimately have \<open>p \<in> W\<close> 
+            using \<open>p \<in> sub_C' \<phi>\<close> \<open>W \<in> mcss A \<phi>\<close> consistent_consequent maximal'_def by blast
+          moreover have \<open>consistent A W\<close> \<open>maximal' A \<phi> W\<close> \<open>W \<subseteq> sub_C' \<phi>\<close>
+            using \<open>W \<in> mcss A \<phi>\<close> by simp_all
+          ultimately show ?thesis 
+            using Co.hyps by blast
         qed
         then show ?thesis 
-          using 1 less.prems(1) by auto
+          using 1 by simp
       next
         case 2
         then show ?thesis sorry
