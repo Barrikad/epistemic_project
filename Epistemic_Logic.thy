@@ -786,6 +786,9 @@ qed
 
 lemma Ev_implies_K: \<open>i \<in> set g \<Longrightarrow> A \<turnstile> Ev g p \<^bold>\<longrightarrow> K i p\<close> sorry
 
+lemma K_implies_combine: \<open>A \<turnstile> ps \<^bold>\<leadsto> q \<Longrightarrow> A \<turnstile> ps \<^bold>\<leadsto> r \<Longrightarrow> A \<turnstile> ps \<^bold>\<leadsto> (q \<^bold>\<and> r)\<close>
+  by (metis K_ImpI K_imply_head K_right_mp con_imp_antecedents imply.simps(2))
+
 section \<open>Strong Soundness\<close>
 
 corollary soundness_imply:
@@ -1403,24 +1406,59 @@ lemma truth_lemma_Ev:
   assumes prems: \<open>V \<in> mcss A \<phi>\<close> \<open>Ev g p \<in> sub_C' \<phi>\<close>
   assumes hyp: \<open>\<And> V. V \<in> mcss A \<phi> \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> p\<close>
   shows \<open>Ev g p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> Ev g p\<close>
-proof (induct g)
-  case Nil
-  thus ?case sorry
-next
-  case (Cons a as)
-  have \<open>Ev (a # as) p \<in> V \<Longrightarrow> canonical A \<phi>, V \<Turnstile> Ev (a # as) p\<close>
-  proof -
-    assume \<open>Ev (a # as) p \<in> V\<close>
-    thus \<open>canonical A \<phi>, V \<Turnstile> Ev (a # as) p\<close>  sorry
+proof-
+  from \<open>Ev g p \<in> sub_C' \<phi> \<close> have \<open>Ev g p \<in> sub_C \<phi>\<close>
+    by (simp add: image_iff)
+  then have \<open>\<forall> i \<in> set g. K i p \<in> sub_C \<phi>\<close>
+    by (induct \<phi>) auto
+  then have \<open>\<forall> i \<in> set g. K i p \<in> sub_C' \<phi>\<close>
+    by simp
+  then have \<open>(Ev g p \<in> V) = (\<forall> i \<in> set g. K i p \<in> V)\<close> 
+  proof (safe)
+    fix i
+    assume \<open>Ev g p \<in> V\<close> \<open>i \<in> set g\<close>
+    moreover have \<open>A \<turnstile> Ev g p \<^bold>\<longrightarrow> K i p\<close>
+      using \<open>i \<in> set g\<close> by (simp add: Ev_implies_K)
+    ultimately show \<open>K i p \<in> V\<close>
+      using \<open>\<forall> i \<in> set g. K i p \<in> sub_C' \<phi>\<close> consistent_consequent maximal'_def prems(1) by blast
+  next
+    assume \<open>\<forall> i \<in> set g. K i p \<in> V\<close>
+    then have *: \<open>set (map (\<lambda> i. K i p) g) \<subseteq> V\<close>
+      by (simp add: image_subset_iff)
+    have \<open>A \<turnstile> map (\<lambda> i. K i p) g \<^bold>\<leadsto> unfold_Ev g p\<close>
+    proof (induct g)
+      case Nil
+      then show ?case 
+        by (metis conjunct.simps(1) empty_fold imply_implies_itself list.simps(8))
+    next
+      case (Cons i g)
+      then have \<open>A \<turnstile> map (\<lambda>i. K i p) (i # g) \<^bold>\<leadsto> unfold_Ev g p\<close>
+        using K_imply_Cons by auto
+      moreover have \<open>A \<turnstile> map (\<lambda>i. K i p) (i # g) \<^bold>\<leadsto> K i p\<close>
+        using K_imply_head by auto
+      ultimately have \<open>A \<turnstile> map (\<lambda>i. K i p) (i # g) \<^bold>\<leadsto> (K i p \<^bold>\<and> unfold_Ev (g) p)\<close>
+        using K_implies_combine by fast
+      then show ?case
+        by simp
+    qed
+    then have \<open>A \<turnstile> map (\<lambda> i. K i p) g \<^bold>\<leadsto> Ev g p\<close> 
+      by (metis C1b K_imply_head K_right_mp R1 imply.simps(2))
+    then show \<open>Ev g p \<in> V\<close> 
+      using consequent_in_maximal' \<open>\<forall> i \<in> set g. K i p \<in> sub_C' \<phi>\<close> prems * by blast
   qed
-  moreover have \<open>canonical A \<phi>, V \<Turnstile> Ev (a # as) p \<Longrightarrow> Ev (a # as) p \<in> V\<close>
-  proof -
-    assume \<open>canonical A \<phi>, V \<Turnstile> Ev (a # as) p\<close>
-    thus \<open>Ev (a # as) p \<in> V\<close> sorry
+  moreover have \<open>(\<forall> i \<in> set g. (K i p \<in> V) = (canonical A \<phi>, V \<Turnstile> K i p))\<close> 
+  proof
+    fix i
+    assume \<open>i \<in> set g\<close>
+    then show \<open>(K i p \<in> V) = (canonical A \<phi>, V \<Turnstile> K i p)\<close> 
+      using truth_lemma_K \<open>\<forall>i\<in>set g. K i p \<in> sub_C' \<phi>\<close> hyp prems(1) by blast
   qed
-  ultimately show ?case 
-    by blast
+  moreover have \<open>(\<forall> i \<in> set g. canonical A \<phi>, V \<Turnstile> K i p) = (canonical A \<phi>, V \<Turnstile> Ev g p)\<close> 
+    by simp
+  ultimately show ?thesis 
+    by simp
 qed
+
 
 lemma truth_lemma:
   fixes p :: \<open>('i :: countable) fm\<close>
