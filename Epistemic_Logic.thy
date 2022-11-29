@@ -1269,7 +1269,7 @@ abbreviation pi :: \<open>'i fm set \<Rightarrow> id \<Rightarrow> bool\<close> 
   \<open>pi V x \<equiv> Pro x \<in> V\<close>
 
 abbreviation known :: \<open>'i fm set \<Rightarrow> 'i \<Rightarrow> 'i fm set\<close> where
-  \<open>known V i \<equiv> {p. K i p \<in> V}\<close> (*necessary to change this because axioms might imply knowledge formulas not in sub_C' p*)
+  \<open>known V i \<equiv> {p. K i p \<in> V}\<close>
 
 abbreviation reach :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i \<Rightarrow> 'i fm set \<Rightarrow> 'i fm set set\<close> where
   \<open>reach A i V \<equiv> {W. known V i \<subseteq> W}\<close> 
@@ -1337,7 +1337,65 @@ lemma truth_lemma_K:
   assumes hyp: \<open>\<And> V. V \<in> mcss A \<phi> \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> p\<close>
   shows \<open>K i p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> K i p\<close>
 proof-
-  show ?thesis sorry
+  from \<open>K i p \<in> sub_C' \<phi>\<close> have \<open>K i p \<in> sub_C \<phi>\<close>
+    by (simp add: image_iff)
+  hence \<open>p \<in> sub_C \<phi>\<close>
+    by (metis insertI2 p_in_sub_C_p sub_C.simps(6) sub_C_transitive)
+  hence \<open>p \<in> sub_C' \<phi>\<close>
+    by simp
+  show ?thesis
+  proof (safe)
+    assume \<open>K i p \<in> V\<close>
+    then have \<open>W \<in> reach A i V \<Longrightarrow> W \<in> mcss A \<phi> \<Longrightarrow> canonical A \<phi>, W \<Turnstile> p\<close> for W
+      using hyp by auto
+    then show \<open>canonical A \<phi>, V \<Turnstile> K i p\<close> 
+      by simp
+  next 
+    assume \<open>canonical A \<phi>, V \<Turnstile> K i p\<close> 
+    from \<open>p \<in> sub_C \<phi>\<close> have \<open>\<^bold>\<not> p \<in> sub_C' \<phi>\<close> 
+      by simp
+    moreover have \<open>\<forall> p. K i p \<in> V \<longrightarrow> p \<in> sub_C' \<phi>\<close>
+      using \<open>V \<in> mcss A \<phi>\<close> 
+      by (smt (verit, ccfv_SIG) Un_iff fm.distinct(53) image_iff insert_absorb insert_iff insert_subset mem_Collect_eq p_in_sub_C_p sub_C.simps(6) sub_C_transitive)
+    ultimately have \<open>{\<^bold>\<not> p} \<union> known V i \<subseteq> sub_C' \<phi>\<close>
+      by auto
+
+    have \<open>\<not> consistent A ({\<^bold>\<not> p} \<union> known V i)\<close>
+    proof
+      assume \<open>consistent A ({\<^bold>\<not> p} \<union> known V i)\<close>
+      then obtain W where W: \<open>{\<^bold>\<not> p} \<union> known V i \<subseteq> W\<close> \<open>W \<subseteq> sub_C' \<phi>\<close> \<open>consistent A W\<close> \<open>maximal' A \<phi> W\<close>
+        using \<open>{\<^bold>\<not> p} \<union> known V i \<subseteq> sub_C' \<phi>\<close> \<open>V \<in> mcss A \<phi>\<close> maximal_extension' by (smt (verit))
+      then have \<open>canonical A \<phi>, W \<Turnstile> \<^bold>\<not> p\<close>
+        using \<open>V \<in> mcss A \<phi>\<close> exactly_one_in_maximal' 
+        by (smt (verit) Imp_intro dual.simps(1) hyp insertCI mem_Collect_eq subset_iff sup.boundedE)
+      moreover have \<open>W \<in> reach A i V\<close> \<open>W \<in> mcss A \<phi>\<close>
+        using W by simp_all
+      ultimately have \<open>canonical A \<phi>, V \<Turnstile> \<^bold>\<not> K i p\<close>
+        by auto
+      then show False
+        using \<open>canonical A \<phi>, V \<Turnstile> K i p\<close> by auto
+    qed
+
+    then obtain W where W:
+      \<open>{\<^bold>\<not> p} \<union> W \<subseteq> {\<^bold>\<not> p} \<union> known V i\<close> \<open>(\<^bold>\<not> p) \<notin> W\<close> \<open>finite W\<close> \<open>\<not> consistent A ({\<^bold>\<not> p} \<union> W)\<close>
+      using exists_finite_inconsistent by metis
+
+    obtain L where L: \<open>set L = W\<close>
+      using \<open>finite W\<close> finite_list by blast
+
+    then have \<open>A \<turnstile> L \<^bold>\<leadsto> p\<close>
+      using W(4) inconsistent_imply by blast
+    then have \<open>A \<turnstile> K i (L \<^bold>\<leadsto> p)\<close>
+      using R2 by fast
+    then have \<open>A \<turnstile> map (K i) L \<^bold>\<leadsto> K i p\<close>
+      using K_distrib_K_imp by fast
+    moreover have \<open>set (map (K i) L) \<subseteq> V\<close> 
+      using L W(1,2) by auto
+    moreover have \<open>set (map (K i) L) \<subseteq> sub_C' \<phi>\<close> 
+      using calculation(2) prems(1) by blast
+    ultimately show \<open>K i p \<in> V\<close>
+      using \<open>K i p \<in> sub_C' \<phi>\<close> consequent_in_maximal' prems(1) by blast
+  qed
 qed
 
 lemma truth_lemma_Ev: 
@@ -1762,7 +1820,12 @@ qed
 corollary completeness:
   assumes \<open>P; {} \<TTurnstile> p\<close> and \<open>P_canonical P A [] p\<close>
   shows \<open>A \<turnstile> p\<close>
-  using assms strong_completeness[where G=\<open>{}\<close>] sorry
+proof-
+  have \<open>A; {} \<turnstile> p\<close>
+    using assms strong_completeness[where G=\<open>{}\<close>] by blast
+  then show \<open>A \<turnstile> p\<close> 
+    by simp
+qed
 
 corollary completeness\<^sub>A:
   assumes \<open>(\<lambda>_. True); {} \<TTurnstile> p\<close>
@@ -1844,7 +1907,7 @@ proof-
   moreover have \<open>\<forall>(\<phi> :: ('i :: countable) fm). reflexive (canonical AxT \<phi>)\<close> 
     using reflexive\<^sub>T by auto
   ultimately show ?thesis
-    using strong_completeness \<open>finite G\<close> by blast
+    using strong_completeness \<open>finite G\<close> sorry
 qed
 
 theorem main\<^sub>T: \<open>G \<TTurnstile>\<^sub>T p \<longleftrightarrow> G \<turnstile>\<^sub>T p\<close> if \<open>finite G\<close>
