@@ -1331,7 +1331,7 @@ qed
 
 lemma truth_lemma_K: 
   fixes p :: \<open>('i :: countable) fm\<close>
-  assumes prems: \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>p \<in> sub_C' \<phi>\<close> \<open>V \<subseteq> sub_C' \<phi>\<close>
+  assumes prems: \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>K i p \<in> sub_C' \<phi>\<close> \<open>V \<subseteq> sub_C' \<phi>\<close>
   assumes hyp: \<open>\<And> V. 
     V \<subseteq> sub_C' \<phi> \<Longrightarrow> consistent A V \<Longrightarrow> maximal' A \<phi> V \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> p\<close>
   shows \<open>K i p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> K i p\<close>
@@ -1523,16 +1523,62 @@ next
   qed
 next
   case (K i p)
-  then show ?case sorry
+  moreover have \<open>p \<in> sub_C' \<phi>\<close> 
+    using \<open>K i p \<in> sub_C' \<phi>\<close>
+    by (smt (verit) Un_iff fm.distinct(53) image_iff insertCI p_in_sub_C_p sub_C.simps(6) sub_C_transitive)
+  moreover have \<open>\<And> V. 
+    V \<subseteq> sub_C' \<phi> \<Longrightarrow> consistent A V \<Longrightarrow> maximal' A \<phi> V \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> p\<close>
+    using calculation by blast
+  ultimately show ?case 
+    using truth_lemma_K by force
 next
   case (Ev g p)
-  then show ?case sorry
+  moreover have \<open>p \<in> sub_C' \<phi>\<close> 
+    using \<open>Ev g p \<in> sub_C' \<phi>\<close> p_in_sub_C_p sub_C.simps(7) sub_C_transitive
+    by (smt (verit, ccfv_threshold) Un_iff Un_insert_right fm.distinct(55) image_iff sup_commute)
+  moreover have \<open>\<And> V. 
+    V \<subseteq> sub_C' \<phi> \<Longrightarrow> consistent A V \<Longrightarrow> maximal' A \<phi> V \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> p\<close>
+    using calculation by blast
+  ultimately show ?case 
+    using truth_lemma_Ev by force
 next
   case (Co g p) 
   show ?case 
   proof safe
     assume \<open>Co g p \<in> V\<close>
-    show \<open>canonical A \<phi>, V \<Turnstile> Co g p\<close> sorry
+    then have \<open>Co g p \<in> sub_C \<phi>\<close> 
+      using Co.prems(1) by auto
+    then have \<open>Ev g (p \<^bold>\<and> Co g p) \<in> sub_C \<phi>\<close>
+      by (induct \<phi>) auto
+    then have \<open>Ev g (p \<^bold>\<and> Co g p) \<in> sub_C' \<phi>\<close> 
+      by simp
+    moreover have \<open>A \<turnstile> Co g p \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> Co g p)\<close> 
+      by (simp add: C2)
+    ultimately have \<open>Ev g (p \<^bold>\<and> Co g p) \<in> V\<close>
+      using Co.prems(3) Co.prems(4) \<open>Co g p \<in> V\<close> consistent_consequent maximal'_def by blast
+    from Co have \<open>n \<ge> 1 \<Longrightarrow> canonical A \<phi>, V \<Turnstile> Ev_n g p n\<close> for n 
+    proof (induct n rule: less_induct)
+      case (less n)(*note: this is a new n*)
+      then consider \<open>n = 0\<close> | \<open>n > 0\<close>
+        by linarith
+      then show ?case 
+      proof cases
+        case 1
+        have \<open>i \<in> set g \<Longrightarrow> W \<in> reach A i V \<Longrightarrow> W \<in> mcss A \<phi> \<Longrightarrow> canonical A \<phi>, W \<Turnstile> p\<close> for i W
+        proof-
+          assume \<open>i \<in> set g\<close> \<open>W \<in> reach A i V\<close> \<open>W \<in> mcss A \<phi>\<close>
+          show ?thesis
+            using "1" less.prems(1) by auto
+        qed
+        then show ?thesis 
+          using 1 less.prems(1) by auto
+      next
+        case 2
+        then show ?thesis sorry
+      qed
+    qed
+    then show \<open>canonical A \<phi>, V \<Turnstile> Co g p\<close>
+      by simp
   next
     have \<open>finite (mcss A \<phi>)\<close> 
       using finite_Collect_subsets sub_C'_finite by fastforce
