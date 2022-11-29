@@ -1333,9 +1333,8 @@ qed
 
 lemma truth_lemma_K: 
   fixes p :: \<open>('i :: countable) fm\<close>
-  assumes prems: \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>K i p \<in> sub_C' \<phi>\<close> \<open>V \<subseteq> sub_C' \<phi>\<close>
-  assumes hyp: \<open>\<And> V. 
-    V \<subseteq> sub_C' \<phi> \<Longrightarrow> consistent A V \<Longrightarrow> maximal' A \<phi> V \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> p\<close>
+  assumes prems: \<open>V \<in> mcss A \<phi>\<close> \<open>K i p \<in> sub_C' \<phi>\<close>
+  assumes hyp: \<open>\<And> V. V \<in> mcss A \<phi> \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> p\<close>
   shows \<open>K i p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> K i p\<close>
 proof-
   show ?thesis sorry
@@ -1343,9 +1342,8 @@ qed
 
 lemma truth_lemma_Ev: 
   fixes p :: \<open>('i :: countable) fm\<close>
-  assumes prems: \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>Ev g p \<in> sub_C' \<phi>\<close> \<open>V \<subseteq> sub_C' \<phi>\<close>
-  assumes hyp: \<open>\<And> V. 
-    V \<subseteq> sub_C' \<phi> \<Longrightarrow> consistent A V \<Longrightarrow> maximal' A \<phi> V \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> p\<close>
+  assumes prems: \<open>V \<in> mcss A \<phi>\<close> \<open>Ev g p \<in> sub_C' \<phi>\<close>
+  assumes hyp: \<open>\<And> V. V \<in> mcss A \<phi> \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> p\<close>
   shows \<open>Ev g p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> Ev g p\<close>
 proof (induct g)
   case Nil
@@ -1525,26 +1523,29 @@ next
   qed
 next
   case (K i p)
-  moreover have \<open>p \<in> sub_C' \<phi>\<close> 
+  have \<open>p \<in> sub_C' \<phi>\<close> 
     using \<open>K i p \<in> sub_C' \<phi>\<close>
     by (smt (verit) Un_iff fm.distinct(53) image_iff insertCI p_in_sub_C_p sub_C.simps(6) sub_C_transitive)
-  moreover have \<open>\<And> V. 
-    V \<subseteq> sub_C' \<phi> \<Longrightarrow> consistent A V \<Longrightarrow> maximal' A \<phi> V \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> p\<close>
-    using calculation by blast
+  then have \<open>\<And> V. V \<in> mcss A \<phi> \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> p\<close>
+    using K.hyps by blast
+  moreover have \<open>V \<in> mcss A \<phi>\<close> 
+    using K by simp
   ultimately show ?case 
-    using truth_lemma_K by force
+    using truth_lemma_K \<open>K i p \<in> sub_C' \<phi>\<close> by blast
 next
   case (Ev g p)
-  moreover have \<open>p \<in> sub_C' \<phi>\<close> 
+  have \<open>p \<in> sub_C' \<phi>\<close> 
     using \<open>Ev g p \<in> sub_C' \<phi>\<close> p_in_sub_C_p sub_C.simps(7) sub_C_transitive
     by (smt (verit, ccfv_threshold) Un_iff Un_insert_right fm.distinct(55) image_iff sup_commute)
-  moreover have \<open>\<And> V. 
-    V \<subseteq> sub_C' \<phi> \<Longrightarrow> consistent A V \<Longrightarrow> maximal' A \<phi> V \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> p\<close>
-    using calculation by blast
+  then have \<open>\<And> V. V \<in> mcss A \<phi> \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> p\<close>
+    using Ev.hyps by blast
+  moreover have \<open>V \<in> mcss A \<phi>\<close>
+    using Ev by simp
   ultimately show ?case 
-    using truth_lemma_Ev by force
+    using truth_lemma_Ev \<open>Ev g p \<in> sub_C' \<phi>\<close> by blast
 next
   case (Co g p) 
+  (*first we show some sub-terms of phi*)
   from \<open>Co g p \<in> sub_C' \<phi>\<close> have \<open>Co g p \<in> sub_C \<phi>\<close> 
     by (simp add: image_iff)
   then have \<open>p \<in> sub_C \<phi>\<close>
@@ -1555,57 +1556,61 @@ next
   qed auto 
   then have \<open>p \<in> sub_C' \<phi>\<close> 
     by simp
+  have \<open>Co g p \<in> sub_C \<phi>\<close> 
+    using Co.prems(1) by auto
+  then have \<open>Ev g (p \<^bold>\<and> Co g p) \<in> sub_C \<phi>\<close> \<open>\<forall> i \<in> set g. K i (p \<^bold>\<and> Co g p) \<in> sub_C \<phi>\<close>
+    by (induct \<phi>) auto
+  then have \<open>Ev g (p \<^bold>\<and> Co g p) \<in> sub_C' \<phi>\<close> \<open>\<forall> i \<in> set g. K i (p \<^bold>\<and> Co g p) \<in> sub_C' \<phi>\<close>
+    by simp_all
   show ?case 
   proof safe
     assume \<open>Co g p \<in> V\<close>
-    then have \<open>Co g p \<in> sub_C \<phi>\<close> 
-      using Co.prems(1) by auto
-    then have \<open>Ev g (p \<^bold>\<and> Co g p) \<in> sub_C \<phi>\<close> \<open>\<forall> i \<in> set g. K i (p \<^bold>\<and> Co g p) \<in> sub_C \<phi>\<close>
-      by (induct \<phi>) auto
-    then have \<open>Ev g (p \<^bold>\<and> Co g p) \<in> sub_C' \<phi>\<close> \<open>\<forall> i \<in> set g. K i (p \<^bold>\<and> Co g p) \<in> sub_C' \<phi>\<close>
-      by simp_all
-    moreover have \<open>A \<turnstile> Co g p \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> Co g p)\<close> 
-      by (simp add: C2)
-    ultimately have \<open>Ev g (p \<^bold>\<and> Co g p) \<in> V\<close>
-      using Co.prems(3) Co.prems(4) \<open>Co g p \<in> V\<close> consistent_consequent maximal'_def by blast
-    moreover have \<open>\<forall> i \<in> set g. A \<turnstile> Ev g (p \<^bold>\<and> Co g p) \<^bold>\<longrightarrow> K i (p \<^bold>\<and> Co g p)\<close>
-      by (simp add: Ev_implies_K)
-    ultimately have \<open>\<forall> i \<in> set g. K i (p \<^bold>\<and> Co g p) \<in> V\<close>
-      using \<open>\<forall> i \<in> set g. K i (p \<^bold>\<and> Co g p) \<in> sub_C' \<phi>\<close>
-        Co.prems(3) Co.prems(4) consistent_consequent maximal'_def by blast
-    from Co have \<open>n \<ge> 1 \<Longrightarrow> canonical A \<phi>, V \<Turnstile> Ev_n g p n\<close> for n 
+    moreover have \<open>\<And> W. n \<ge> 1 \<Longrightarrow> W \<in> mcss A \<phi> \<Longrightarrow> Co g p \<in> W \<Longrightarrow> canonical A \<phi>, W \<Turnstile> Ev_n g p n\<close> for n
     proof (induct n rule: less_induct)
-      case (less n)(*note: this is a new n*)
-      then consider \<open>n = 1\<close> | \<open>n > 1\<close>
-        by linarith
+      case (less n)
+      moreover have \<open>A \<turnstile> Co g p \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> Co g p)\<close> 
+        by (simp add: C2)
+      ultimately have \<open>Ev g (p \<^bold>\<and> Co g p) \<in> W\<close>
+        using Co.prems(3) Co.prems(4) consistent_consequent maximal'_def \<open>Ev g (p \<^bold>\<and> Co g p) \<in> sub_C' \<phi>\<close> by blast
+      then have \<open>set [Ev g (p \<^bold>\<and> Co g p)] \<subseteq> W\<close>
+        by simp
+      moreover have \<open>set [Ev g (p \<^bold>\<and> Co g p)] \<subseteq> sub_C' \<phi>\<close>
+        using \<open>Ev g (p \<^bold>\<and> Co g p) \<in> sub_C' \<phi>\<close> by auto
+      moreover have \<open>\<forall> i \<in> set g. A \<turnstile> [Ev g (p \<^bold>\<and> Co g p)] \<^bold>\<leadsto> K i (p \<^bold>\<and> Co g p)\<close>
+        by (simp add: Ev_implies_K)
+      moreover have \<open>maximal' A \<phi> W\<close> \<open>consistent A W\<close>
+        using \<open>W \<in> mcss A \<phi>\<close> by simp_all
+      ultimately have \<open>\<forall> i \<in> set g. K i (p \<^bold>\<and> Co g p) \<in> W\<close>
+        using \<open>\<forall> i \<in> set g. K i (p \<^bold>\<and> Co g p) \<in> sub_C' \<phi>\<close> consequent_in_maximal' by blast 
+      consider \<open>n = 1\<close> | \<open>n > 1\<close>
+        using less by linarith
       then show ?case 
       proof cases
         case 1
-        have \<open>i \<in> set g \<Longrightarrow> W \<in> reach A i V \<Longrightarrow> W \<in> mcss A \<phi> \<Longrightarrow> canonical A \<phi>, W \<Turnstile> p\<close> for i W
+        have \<open>i \<in> set g \<Longrightarrow> W' \<in> reach A i W \<Longrightarrow> W' \<in> mcss A \<phi> \<Longrightarrow> canonical A \<phi>, W' \<Turnstile> p\<close> for i W'
         proof-
-          assume \<open>i \<in> set g\<close> \<open>W \<in> reach A i V\<close> \<open>W \<in> mcss A \<phi>\<close>
-          have \<open>K i (p \<^bold>\<and> Co g p) \<in> V\<close> 
-            using \<open>\<forall> i \<in> set g. K i (p \<^bold>\<and> Co g p) \<in> V\<close> \<open>i \<in> set g\<close>  by simp
-          then have \<open>p \<^bold>\<and> Co g p \<in> W\<close> 
-            using \<open>W \<in> reach A i V\<close> by auto
+          assume \<open>i \<in> set g\<close> \<open>W' \<in> reach A i W\<close> \<open>W' \<in> mcss A \<phi>\<close>
+          have \<open>K i (p \<^bold>\<and> Co g p) \<in> W\<close> 
+            using \<open>\<forall> i \<in> set g. K i (p \<^bold>\<and> Co g p) \<in> W\<close> \<open>i \<in> set g\<close>  by simp
+          then have \<open>p \<^bold>\<and> Co g p \<in> W'\<close> 
+            using \<open>W' \<in> reach A i W\<close> by auto
           moreover have \<open>A \<turnstile> p \<^bold>\<and> Co g p \<^bold>\<longrightarrow> p\<close>
             by (simp add: conE1)
-          ultimately have \<open>p \<in> W\<close> 
-            using \<open>p \<in> sub_C' \<phi>\<close> \<open>W \<in> mcss A \<phi>\<close> consistent_consequent maximal'_def by blast
-          moreover have \<open>consistent A W\<close> \<open>maximal' A \<phi> W\<close> \<open>W \<subseteq> sub_C' \<phi>\<close>
-            using \<open>W \<in> mcss A \<phi>\<close> by simp_all
+          ultimately have \<open>p \<in> W'\<close> 
+            using \<open>p \<in> sub_C' \<phi>\<close> \<open>W' \<in> mcss A \<phi>\<close> consistent_consequent maximal'_def by blast
+          moreover have \<open>consistent A W'\<close> \<open>maximal' A \<phi> W'\<close> \<open>W' \<subseteq> sub_C' \<phi>\<close>
+            using \<open>W' \<in> mcss A \<phi>\<close> by simp_all
           ultimately show ?thesis 
             using Co.hyps by blast
         qed
-        then show ?thesis 
-          using 1 by simp
+        then show ?thesis sorry
       next
         case 2
         then show ?thesis sorry
       qed
     qed
-    then show \<open>canonical A \<phi>, V \<Turnstile> Co g p\<close>
-      by simp
+    ultimately show \<open>canonical A \<phi>, V \<Turnstile> Co g p\<close>
+      by (simp add: Co.prems(2) Co.prems(3) Co.prems(4))
   next
     have \<open>finite (mcss A \<phi>)\<close> 
       using finite_Collect_subsets sub_C'_finite by fastforce
