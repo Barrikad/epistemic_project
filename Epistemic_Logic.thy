@@ -877,6 +877,15 @@ qed
 lemma conjunct_implies_elem: \<open>p \<in> set ps \<Longrightarrow> A \<turnstile> \<^bold>\<And> ps \<^bold>\<longrightarrow> p\<close> 
   by (metis K_imply_head R1 imply.simps(2) imply_append imply_implies_conjunct split_list)
 
+
+lemma conjunction_in_K: \<open>A \<turnstile> p \<^bold>\<longrightarrow> K i q \<Longrightarrow> A \<turnstile> p \<^bold>\<longrightarrow> K i r \<Longrightarrow> A \<turnstile> p \<^bold>\<longrightarrow> K i (q \<^bold>\<and> r)\<close> 
+proof-
+  have \<open>A \<turnstile> K i q \<^bold>\<longrightarrow> K i r \<^bold>\<longrightarrow> K i (q \<^bold>\<and> r)\<close> 
+    by (metis K_A2' K_imply_head K_map con_imp_antecedents imp_chain imply.simps(1) imply.simps(2))
+  then show \<open>A \<turnstile> p \<^bold>\<longrightarrow> K i q \<Longrightarrow> A \<turnstile> p \<^bold>\<longrightarrow> K i r \<Longrightarrow> A \<turnstile> p \<^bold>\<longrightarrow> K i (q \<^bold>\<and> r)\<close>  
+    using con_imp2 con_imp_antecedents imp_chain by blast
+qed
+
 section \<open>Strong Soundness\<close>
 
 corollary soundness_imply:
@@ -1464,7 +1473,30 @@ proof -
     ultimately show \<open>(\<And>\<w>'. set (map set \<w>') = WNCo \<Longrightarrow> thesis) \<Longrightarrow> thesis\<close>
       using list_of_lists_if_finite_set_of_sets by blast
   qed
-  have c: \<open>i \<in> set g \<Longrightarrow> w \<in> set \<w> \<Longrightarrow> A \<turnstile> \<^bold>\<And> w \<^bold>\<longrightarrow> K i (p \<^bold>\<and> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>'))\<close> for w i sorry
+  have c: \<open>i \<in> set g \<Longrightarrow> w \<in> set \<w> \<Longrightarrow> A \<turnstile> \<^bold>\<And> w \<^bold>\<longrightarrow> K i (p \<^bold>\<and> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>'))\<close> for w i 
+  proof-
+    assume \<open>i \<in> set g\<close> \<open>w \<in> set \<w>\<close>
+    then have \<open>\<forall> w' \<in> set \<w>'. A \<turnstile> \<^bold>\<And> w \<^bold>\<longrightarrow> K i (\<^bold>\<not>(\<^bold>\<And> w'))\<close>
+      using b \<open>set (map set \<w>') = WNCo\<close> by auto
+    then have \<open>A \<turnstile> \<^bold>\<And> w \<^bold>\<longrightarrow> K i (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>')\<close>
+    proof (induct \<w>')
+      case Nil
+      then show ?case 
+        by (metis R1 R2 conE1 conE2 con_imp_antecedents conjunct.simps(1) list.simps(8))
+    next
+      case (Cons w' \<w>')
+      then have \<open>A \<turnstile> \<^bold>\<And> w \<^bold>\<longrightarrow> K i (\<^bold>\<And> map (\<lambda>w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>')\<close> 
+        by simp
+      moreover have \<open>A \<turnstile> \<^bold>\<And> w \<^bold>\<longrightarrow> K i (\<^bold>\<not> (\<^bold>\<And> w'))\<close>
+        using Cons.prems by simp
+      ultimately have \<open>A \<turnstile> \<^bold>\<And> w \<^bold>\<longrightarrow> K i (\<^bold>\<not> (\<^bold>\<And> w') \<^bold>\<and> (\<^bold>\<And> map (\<lambda>w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>'))\<close> 
+        using conjunction_in_K by fast
+      then show ?case
+        by simp
+    qed
+    then show ?thesis
+      using a \<open>i \<in> set g\<close> \<open>w \<in> set \<w>\<close> conjunction_in_K by fast
+  qed
   have d1: \<open>i \<in> set g \<Longrightarrow> w \<in> set \<w> \<Longrightarrow> A \<turnstile> \<phi>\<^sub>\<w> \<^bold>\<longrightarrow> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>')\<close> for w i sorry (*not actually used in the proof it seems like*)
   have d2: \<open>i \<in> set g \<Longrightarrow> w \<in> set \<w> \<Longrightarrow> A \<turnstile> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>') \<^bold>\<longrightarrow> \<phi>\<^sub>\<w>\<close> for w i sorry
   have e: \<open>i \<in> set g \<Longrightarrow> w \<in> set \<w> \<Longrightarrow> A \<turnstile> \<^bold>\<And> w \<^bold>\<longrightarrow> K i (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close> for w i 
