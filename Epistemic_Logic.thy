@@ -877,13 +877,21 @@ qed
 lemma conjunct_implies_elem: \<open>p \<in> set ps \<Longrightarrow> A \<turnstile> \<^bold>\<And> ps \<^bold>\<longrightarrow> p\<close> 
   by (metis K_imply_head R1 imply.simps(2) imply_append imply_implies_conjunct split_list)
 
-
 lemma conjunction_in_K: \<open>A \<turnstile> p \<^bold>\<longrightarrow> K i q \<Longrightarrow> A \<turnstile> p \<^bold>\<longrightarrow> K i r \<Longrightarrow> A \<turnstile> p \<^bold>\<longrightarrow> K i (q \<^bold>\<and> r)\<close> 
 proof-
   have \<open>A \<turnstile> K i q \<^bold>\<longrightarrow> K i r \<^bold>\<longrightarrow> K i (q \<^bold>\<and> r)\<close> 
     by (metis K_A2' K_imply_head K_map con_imp_antecedents imp_chain imply.simps(1) imply.simps(2))
   then show \<open>A \<turnstile> p \<^bold>\<longrightarrow> K i q \<Longrightarrow> A \<turnstile> p \<^bold>\<longrightarrow> K i r \<Longrightarrow> A \<turnstile> p \<^bold>\<longrightarrow> K i (q \<^bold>\<and> r)\<close>  
     using con_imp2 con_imp_antecedents imp_chain by blast
+qed
+
+lemma dis_to_imp: \<open>A \<turnstile> p \<^bold>\<or> q \<Longrightarrow> A \<turnstile> \<^bold>\<not>q \<^bold>\<longrightarrow> p\<close>
+proof-
+  assume \<open>A \<turnstile> p \<^bold>\<or> q\<close>
+  moreover have \<open>A \<turnstile> (p \<^bold>\<or> q) \<^bold>\<longrightarrow> \<^bold>\<not>q \<^bold>\<longrightarrow> p\<close>
+    using A1 by force
+  ultimately show ?thesis 
+    using R1 by auto
 qed
 
 section \<open>Strong Soundness\<close>
@@ -1378,6 +1386,9 @@ proof-
     using \<open>K i p \<in> sub_C' \<phi>\<close> consequent_in_maximal' prems(1) by blast
 qed
 
+lemma extract_neg_conjunct: \<open>A \<turnstile> (\<^bold>\<And> (map (Neg) ps)) \<^bold>\<longrightarrow> \<^bold>\<not>(\<^bold>\<Or> ps)\<close>sorry
+
+
 (*exercise 3.28*)
 lemma Co_lemma:
   fixes A \<phi> g 
@@ -1497,16 +1508,33 @@ proof -
     then show ?thesis
       using a \<open>i \<in> set g\<close> \<open>w \<in> set \<w>\<close> conjunction_in_K by fast
   qed
-  have d1: \<open>i \<in> set g \<Longrightarrow> w \<in> set \<w> \<Longrightarrow> A \<turnstile> \<phi>\<^sub>\<w> \<^bold>\<longrightarrow> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>')\<close> for w i sorry (*not actually used in the proof it seems like*)
-  have d2: \<open>i \<in> set g \<Longrightarrow> w \<in> set \<w> \<Longrightarrow> A \<turnstile> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>') \<^bold>\<longrightarrow> \<phi>\<^sub>\<w>\<close> for w i sorry
+  (*have d1: \<open>i \<in> set g \<Longrightarrow> w \<in> set \<w> \<Longrightarrow> A \<turnstile> \<phi>\<^sub>\<w> \<^bold>\<longrightarrow> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>')\<close> for w i not actually used in the proof it seems like*)
+  have d_hint: \<open>A \<turnstile> (\<^bold>\<Or> (map conjunct \<w>)) \<^bold>\<or> (\<^bold>\<Or> (map conjunct \<w>'))\<close>
+  proof-
+    show ?thesis sorry
+  qed
+  have d: \<open>A \<turnstile> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>') \<^bold>\<longrightarrow> \<phi>\<^sub>\<w>\<close>
+  proof-
+    have \<open>A \<turnstile> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>') \<^bold>\<longrightarrow> \<^bold>\<not>(\<^bold>\<Or> (map conjunct \<w>'))\<close>
+    proof-
+      have \<open>(\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>') = (\<^bold>\<And> map Neg (map conjunct \<w>'))\<close>
+        by (induct \<w>') auto
+      then show ?thesis
+        using extract_neg_conjunct by metis
+    qed
+    moreover have \<open>A \<turnstile> \<^bold>\<not>(\<^bold>\<Or> (map conjunct \<w>')) \<^bold>\<longrightarrow> (\<^bold>\<Or> (map conjunct \<w>))\<close>
+      using d_hint dis_to_imp by auto
+    ultimately show ?thesis
+      using imp_chain assms(4) by auto
+    qed
   have e: \<open>i \<in> set g \<Longrightarrow> w \<in> set \<w> \<Longrightarrow> A \<turnstile> \<^bold>\<And> w \<^bold>\<longrightarrow> K i (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close> for w i 
   proof- 
     assume \<open>i \<in> set g\<close>
     moreover assume \<open>w \<in> set \<w>\<close>
     ultimately have \<open>A \<turnstile>  K i (p \<^bold>\<and> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>')) \<^bold>\<longrightarrow> K i (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close>
-      using d2 R1 by (metis K_map conE1 con_imp2 con_imp_antecedents)
+      using d R1 by (metis K_map conE1 con_imp2 con_imp_antecedents)
     then show ?thesis
-      using \<open>i \<in> set g\<close> \<open>w \<in> set \<w>\<close> c d2 imp_chain by fast
+      using \<open>i \<in> set g\<close> \<open>w \<in> set \<w>\<close> c d imp_chain by fast
   qed
   then show f: ?thesis 
   proof -
