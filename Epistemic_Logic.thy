@@ -1408,7 +1408,21 @@ proof -
   qed
   define WNCo where \<open>WNCo \<equiv> {W \<in> mcss A \<phi>. \<not> canonical A \<phi>, W \<Turnstile> Co g p}\<close>
   have b: \<open>i \<in> set g \<Longrightarrow> w \<in> set \<w> \<Longrightarrow> set w' \<in> WNCo \<Longrightarrow> A \<turnstile> \<^bold>\<And> w \<^bold>\<longrightarrow> K i (\<^bold>\<not> (\<^bold>\<And> w'))\<close> for w' w i
-    sorry
+  proof-
+    assume \<open>i \<in> set g\<close> \<open>w \<in> set \<w>\<close> \<open>set w' \<in> WNCo\<close>
+    then have \<open>set w \<in> WCo\<close>
+      using \<open>set (map set \<w>) = WCo\<close> by auto
+    then have E: \<open>set w \<in> mcss A \<phi>\<close> \<open>set w' \<in> mcss A \<phi>\<close> \<open>canonical A \<phi>, set w \<Turnstile> Co g p\<close>  \<open>\<not> canonical A \<phi>, set w' \<Turnstile> Co g p\<close>
+      using \<open>set w' \<in> WNCo\<close> unfolding WNCo_def WCo_def by simp_all
+    have \<open>set w' \<notin> reach A i (set w)\<close> 
+    proof (rule ccontr)
+      assume \<open>\<not> set w' \<notin> reach A i (set w)\<close>
+      from E(4) obtain k where \<open>\<not> canonical A \<phi>, set w' \<Turnstile> Ev_n g p k\<close> 
+        by auto
+      show False sorry
+    qed
+    show ?thesis sorry
+  qed
   obtain \<w>' where \<open>set (map set \<w>') = WNCo\<close> 
   proof-
     have \<open>finite (mcss A \<phi>)\<close>
