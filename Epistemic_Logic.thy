@@ -736,7 +736,42 @@ proof -
     by (auto intro: R1)
 qed
 
-lemma Ev_add_i: \<open>A \<turnstile> K i p \<^bold>\<longrightarrow> Ev g p \<^bold>\<longrightarrow> Ev (i # g) p\<close> sorry
+lemma con_to_imp_assm: \<open>A \<turnstile> (p \<^bold>\<and> q \<^bold>\<longrightarrow> r) \<^bold>\<longrightarrow> (p \<^bold>\<longrightarrow> q \<^bold>\<longrightarrow> r)\<close> 
+  by (simp add: A1)
+
+lemma imp_to_con_assm: \<open>A \<turnstile> (p \<^bold>\<longrightarrow> q \<^bold>\<longrightarrow> r) \<^bold>\<longrightarrow> (p \<^bold>\<and> q \<^bold>\<longrightarrow> r)\<close> 
+  by (simp add: A1)
+
+lemma imply_chain: \<open>A \<turnstile> ps \<^bold>\<leadsto> q \<Longrightarrow> A \<turnstile> q \<^bold>\<longrightarrow> r \<Longrightarrow> A \<turnstile> ps \<^bold>\<leadsto> r\<close>
+proof (induct ps)
+  case Nil
+  then show ?case 
+    using R1 by auto
+next
+  case (Cons a ps)
+  then show ?case
+    by (metis K_imply_head K_right_mp R1 imply.simps(2))
+qed
+
+lemma Ev_add_i: \<open>A \<turnstile> K i p \<^bold>\<longrightarrow> Ev g p \<^bold>\<longrightarrow> Ev (i # g) p\<close> 
+proof-
+  have \<open>A \<turnstile> Ev g p \<^bold>\<longrightarrow> unfold_Ev g p\<close>
+    by (simp add: C1a)
+  then have \<open>A \<turnstile> K i p \<^bold>\<longrightarrow> Ev g p \<^bold>\<longrightarrow> unfold_Ev g p\<close>
+    by (meson R1 conE1 con_imp_antecedents imp_chain)
+  then have 1:\<open>A \<turnstile> [K i p, Ev g p] \<^bold>\<leadsto> unfold_Ev g p\<close>
+    by simp
+  then have \<open>A \<turnstile> [K i p, Ev g p] \<^bold>\<leadsto> (K i p \<^bold>\<and> unfold_Ev g p)\<close>
+    by (metis C1a K_imply_head con_imp con_imp_antecedents imply.simps(1) imply.simps(2))
+  then have \<open>A \<turnstile> [K i p, Ev g p] \<^bold>\<leadsto> (unfold_Ev (i # g) p)\<close> 
+    by simp
+  moreover have \<open>A \<turnstile> unfold_Ev (i # g) p \<^bold>\<longrightarrow> Ev (i # g) p\<close> 
+    using C1b by blast
+  ultimately have \<open>A \<turnstile> [K i p, Ev g p] \<^bold>\<leadsto> Ev (i # g) p\<close> 
+    using imply_chain by blast
+  then show ?thesis 
+    by simp
+qed
 
 lemma elem_implies_disjunct: \<open>p \<in> set ps \<Longrightarrow> A \<turnstile> p \<^bold>\<longrightarrow> \<^bold>\<Or>ps\<close>
 proof (induct ps)
@@ -745,11 +780,6 @@ proof (induct ps)
     by (metis A1 disjunct.simps(2) eval.simps(3) eval.simps(5) imp_chain set_ConsD)
 qed simp
 
-lemma con_to_imp_assm: \<open>A \<turnstile> (p \<^bold>\<and> q \<^bold>\<longrightarrow> r) \<^bold>\<longrightarrow> (p \<^bold>\<longrightarrow> q \<^bold>\<longrightarrow> r)\<close> 
-  by (simp add: A1)
-
-lemma imp_to_con_assm: \<open>A \<turnstile> (p \<^bold>\<longrightarrow> q \<^bold>\<longrightarrow> r) \<^bold>\<longrightarrow> (p \<^bold>\<and> q \<^bold>\<longrightarrow> r)\<close> 
-  by (simp add: A1)
 
 lemma conjunct_implies_imply: \<open>A \<turnstile> (\<^bold>\<And> ps \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> (ps \<^bold>\<leadsto> q)\<close> 
 proof (induct ps)
@@ -769,8 +799,13 @@ proof (induct ps)
   then show ?case 
     by (simp add: A1)
 next
-  case (Cons a ps)
-  then show ?case sorry (*should be very easy*)
+  case (Cons p ps)
+  then have \<open>A \<turnstile> (p # ps \<^bold>\<leadsto> q) \<^bold>\<longrightarrow> (p \<^bold>\<longrightarrow> (\<^bold>\<And> ps \<^bold>\<longrightarrow> q))\<close>
+    by (metis (mono_tags, opaque_lifting) K_imply_head con_imp_antecedents imp_chain imply.simps(1) imply.simps(2))
+  moreover have \<open>A \<turnstile> (p \<^bold>\<longrightarrow> (\<^bold>\<And> ps \<^bold>\<longrightarrow> q)) \<^bold>\<longrightarrow> (\<^bold>\<And> p # ps \<^bold>\<longrightarrow> q)\<close>
+    by (simp add: imp_to_con_assm)
+  ultimately show ?case 
+    using imp_chain by auto
 qed
 
 lemma imply_implies_itself: \<open>A \<turnstile> ps \<^bold>\<leadsto> \<^bold>\<And>ps\<close>
@@ -784,7 +819,15 @@ next
     by (metis K_Boole conjunct_implies_imply imply.simps(2))
 qed
 
-lemma Ev_implies_K: \<open>i \<in> set g \<Longrightarrow> A \<turnstile> Ev g p \<^bold>\<longrightarrow> K i p\<close> sorry
+lemma unfold_Ev_implies_K: \<open>i \<in> set g \<Longrightarrow> A \<turnstile> unfold_Ev g p \<^bold>\<longrightarrow> K i p\<close>
+proof (induct g)
+  case (Cons a g)
+  then show ?case 
+  by (smt (verit, del_insts) A1 Ev_n_eval eval.simps(5) foldr_cong)
+qed simp
+
+lemma Ev_implies_K: \<open>i \<in> set g \<Longrightarrow> A \<turnstile> Ev g p \<^bold>\<longrightarrow> K i p\<close>
+  using unfold_Ev_implies_K by (metis C1a imp_chain)
 
 lemma K_implies_combine: \<open>A \<turnstile> ps \<^bold>\<leadsto> q \<Longrightarrow> A \<turnstile> ps \<^bold>\<leadsto> r \<Longrightarrow> A \<turnstile> ps \<^bold>\<leadsto> (q \<^bold>\<and> r)\<close>
   by (metis K_ImpI K_imply_head K_right_mp con_imp_antecedents imply.simps(2))
@@ -1048,15 +1091,82 @@ fun dual where
   \<open>dual (\<^bold>\<not>p) = p\<close> |
   \<open>dual p = \<^bold>\<not>p\<close>
 
-lemma dual_imp1: \<open>A \<turnstile> p \<^bold>\<longrightarrow> \<^bold>\<not>(dual p)\<close> sorry
-lemma dual_imp2: \<open>A \<turnstile> \<^bold>\<not>(dual p) \<^bold>\<longrightarrow> p\<close> sorry
-
-lemma exactly_one_in_maximal': 
-  assumes \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>p \<in> sub_C' \<phi>\<close>
-  shows \<open>p \<in> V \<longleftrightarrow> dual p \<notin> V\<close> 
-proof-
-  show ?thesis sorry
+lemma dual_imp1: \<open>A \<turnstile> p \<^bold>\<longrightarrow> \<^bold>\<not>(dual p)\<close> 
+proof (cases \<open>\<exists> p'. p = \<^bold>\<not> p'\<close>)
+  case True
+  then obtain p' where \<open>p = \<^bold>\<not>p'\<close> ..
+  then have \<open>dual p = p'\<close>
+    by simp
+  then show ?thesis
+    by (simp add: A1 \<open>p = \<^bold>\<not> p'\<close>)
+next
+  case False
+  then have \<open>dual p = \<^bold>\<not>p\<close>
+  proof (cases p)
+    case (Imp p q)
+    then show ?thesis 
+      using False by (cases q) auto
+  qed auto
+  then show ?thesis 
+    by (simp add: A1)
 qed
+
+lemma dual_imp2: \<open>A \<turnstile> \<^bold>\<not>(dual p) \<^bold>\<longrightarrow> p\<close> 
+proof (cases \<open>\<exists> p'. p = \<^bold>\<not> p'\<close>)
+  case True
+  then obtain p' where \<open>p = \<^bold>\<not>p'\<close> ..
+  then have \<open>dual p = p'\<close>
+    by simp
+  then show ?thesis
+    by (metis \<open>p = \<^bold>\<not> p'\<close> dual_imp1)
+next
+  case False
+  then have \<open>dual p = \<^bold>\<not>p\<close>
+  proof (cases p)
+    case (Imp p q)
+    then show ?thesis 
+      using False by (cases q) auto
+  qed auto
+  then show ?thesis 
+    by (simp add: A1)
+qed
+
+lemma dual_in_sub_C: \<open>dual p \<in> sub_C' \<phi>\<close> if \<open>p \<in> sub_C' \<phi>\<close>
+proof (cases \<open>\<exists> p'. p = \<^bold>\<not> p'\<close>)
+  case True
+  then obtain p' where \<open>p = \<^bold>\<not>p'\<close> ..
+  then have \<open>dual p = p'\<close>
+    by simp
+  have \<open>p' \<in> sub_C' \<phi>\<close>
+  proof (cases \<open>p \<in> sub_C \<phi>\<close>)
+    case True
+    from this \<open>p = \<^bold>\<not>p'\<close> have \<open>p' \<in> sub_C \<phi>\<close>
+    proof (induct \<phi>)
+      case (Imp \<phi>1 \<phi>2)
+      then show ?case 
+        using p_in_sub_C_p by (cases \<open>\<phi>2 = \<^bold>\<bottom>\<close>,force,auto)
+    qed auto
+    then show ?thesis 
+      by simp
+  next
+    case False
+    then show ?thesis
+      using \<open>dual p = p'\<close> \<open>p \<in> sub_C' \<phi>\<close> by fastforce
+  qed
+  then show ?thesis 
+    by (simp add: \<open>dual p = p'\<close>)
+next
+  case False
+  then have \<open>dual p = \<^bold>\<not>p\<close>
+  proof (cases p)
+    case (Imp p q)
+    then show ?thesis 
+      using False by (cases q) auto
+  qed auto
+  then show ?thesis 
+    using False that by auto
+qed
+
 
 lemma deriv_in_maximal': 
   assumes \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>p \<in> sub_C' \<phi>\<close> \<open>A \<turnstile> p\<close>
@@ -1080,6 +1190,33 @@ proof-
     using \<open>consistent A V\<close> inconsistent_subset by metis
   then show ?thesis
     using \<open>maximal' A \<phi> V\<close> \<open>q \<in> sub_C' \<phi>\<close> maximal'_def by blast
+qed
+
+lemma exactly_one_in_maximal': 
+  assumes \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>p \<in> sub_C' \<phi>\<close> \<open>V \<subseteq> sub_C' \<phi>\<close>
+  shows \<open>p \<in> V \<longleftrightarrow> dual p \<notin> V\<close> 
+proof
+  assume \<open>p \<in> V\<close>
+  have \<open>A \<turnstile> p \<^bold>\<longrightarrow> \<^bold>\<not>(dual p)\<close>
+    by (simp add: dual_imp1)
+  then have \<open>A \<turnstile> [dual p,p] \<^bold>\<leadsto> \<^bold>\<bottom>\<close>
+    by (metis K_swap imply.simps(1) imply.simps(2))
+  then show \<open>dual p \<notin> V\<close>
+    using \<open>consistent A V\<close> \<open>p \<in> sub_C' \<phi>\<close> \<open>p \<in> V\<close> 
+    by (metis Un_insert_right consistent_def empty_set inf_sup_ord(4) insert_absorb list.simps(15) sup_bot.right_neutral)
+next
+  assume \<open>dual p \<notin> V\<close>
+  then have \<open>\<not> consistent A ({dual p} \<union> V)\<close>
+    using dual_in_sub_C assms unfolding maximal'_def by auto
+  then obtain qs where qs_def: \<open>set qs \<subseteq> V\<close> \<open>A \<turnstile> (dual p) # qs \<^bold>\<leadsto> \<^bold>\<bottom>\<close>
+    by (meson assms(1) inconsistent_subset)
+  then have \<open>A \<turnstile> qs \<^bold>\<leadsto> \<^bold>\<not>(dual p)\<close>
+    by (simp add: K_ImpI)
+  then have \<open>A \<turnstile> qs \<^bold>\<leadsto> p\<close> 
+    by (simp add: dual_imp2 imply_chain)
+  then show \<open>p \<in> V\<close>
+    using assms \<open>set qs \<subseteq> V\<close> deriv_in_maximal' dual_in_sub_C 
+    by (smt (verit) consequent_in_maximal' dual_order.trans)
 qed
 
 subsection \<open>Lindenbaum extension\<close>
@@ -1816,7 +1953,7 @@ next
     proof (rule ccontr)
       assume \<open>Co g p \<notin> V\<close>
       then have \<open>\<^bold>\<not>Co g p \<in> V\<close>
-        by (metis Co.prems(1) Co.prems(3) Co.prems(4) dual.simps(16) exactly_one_in_maximal')
+        by (metis Co.prems dual.simps(16) exactly_one_in_maximal')
       then have \<open>A; V \<turnstile> \<^bold>\<not>Co g p\<close>
         by (metis K_imply_head \<v>_def extract_from_list subset_refl)
       from this ** have \<open>A; V \<turnstile> \<^bold>\<not>\<phi>\<^sub>\<v>\<close>
