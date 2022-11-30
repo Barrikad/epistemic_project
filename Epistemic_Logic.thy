@@ -436,18 +436,16 @@ next
     using conE2 con_imp by fastforce
   moreover have \<open>A \<turnstile> unfold_Ev g p \<^bold>\<and> unfold_Ev g (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> Ev g p \<^bold>\<and> Ev g (p \<^bold>\<longrightarrow> q)\<close>
     using C1b con_imp by blast
-  moreover have \<open>A \<turnstile> Ev g p \<^bold>\<and> Ev g (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> Ev g q\<close>
-    using Cons .
   moreover have \<open>A \<turnstile> Ev g q \<^bold>\<longrightarrow> unfold_Ev g q\<close>
     using C1a .
   ultimately have 2: \<open>A \<turnstile> Ev (i # g) p \<^bold>\<and> Ev (i # g) (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> unfold_Ev g q\<close>
-    using imp_chain by blast
+    using Cons imp_chain by blast
   have \<open>A \<turnstile> unfold_Ev (i # g) p \<^bold>\<and> unfold_Ev (i # g) (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> K i p \<^bold>\<and> K i (p \<^bold>\<longrightarrow> q)\<close>
     using conE1 con_imp by fastforce
   moreover have \<open>A \<turnstile> K i p \<^bold>\<and> K i (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> K i q\<close> 
     using A2 .
   ultimately have \<open>A \<turnstile> Ev (i # g) p \<^bold>\<and> Ev (i # g) (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> K i q\<close>
-    using 1 imp_chain by blast
+    using 1 A2 imp_chain by blast
   from this 2 have \<open>A \<turnstile> Ev (i # g) p \<^bold>\<and> Ev (i # g) (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> unfold_Ev (i # g) q\<close> 
     using con_imp2 by auto
   then show ?case 
@@ -1350,9 +1348,16 @@ next
         using list_of_lists_if_finite_set_of_sets by blast
     qed
     have c: \<open>w \<in> set \<w> \<Longrightarrow> A \<turnstile> \<^bold>\<And> w \<^bold>\<longrightarrow> K i (p \<^bold>\<and> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>'))\<close> for w sorry
-    have d1: \<open>w \<in> set \<w> \<Longrightarrow> A \<turnstile> \<phi>\<^sub>\<w> \<^bold>\<longrightarrow> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>')\<close> for w sorry
+    have d1: \<open>w \<in> set \<w> \<Longrightarrow> A \<turnstile> \<phi>\<^sub>\<w> \<^bold>\<longrightarrow> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>')\<close> for w sorry (*not actually used in the proof it seems like*)
     have d2: \<open>w \<in> set \<w> \<Longrightarrow> A \<turnstile> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>') \<^bold>\<longrightarrow> \<phi>\<^sub>\<w>\<close> for w sorry
-    have e: \<open>w \<in> set \<w> \<Longrightarrow> A \<turnstile> \<^bold>\<And> w \<^bold>\<longrightarrow> K i (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close> for w sorry
+    have e: \<open>w \<in> set \<w> \<Longrightarrow> A \<turnstile> \<^bold>\<And> w \<^bold>\<longrightarrow> K i (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close> for w 
+    proof- 
+      assume \<open>w \<in> set \<w>\<close>
+      then have \<open>A \<turnstile>  K i (p \<^bold>\<and> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>')) \<^bold>\<longrightarrow> K i (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close>
+        using d2 R1 by (metis K_map conE1 con_imp2 con_imp_antecedents)
+      then show ?thesis
+        using \<open>w \<in> set \<w>\<close> c d2 imp_chain by fast
+    qed
     consider \<open>\<w> = []\<close> | \<open>\<exists> w. w \<in> set \<w>\<close>
       by fastforce
     then show f: ?thesis 
@@ -1983,7 +1988,7 @@ proof (safe)
     by (simp add: p_in_sub_C_p)
   ultimately have \<open>p \<in> sub_C' \<phi>\<close> 
     using \<open>V \<subseteq> sub_C' \<phi>\<close>  
-    by (smt (verit, del_insts) Un_iff fm.distinct(53) image_iff in_mono sub_C_transitive) (*remove smt call later if time*)
+    by (smt (verit, del_insts) Un_iff fm.distinct(53) image_iff in_mono sub_C_transitive) 
   moreover have \<open>A \<turnstile> K i p \<^bold>\<longrightarrow> p\<close>
     by (metis Ax AxT.simps assms(1) rev_predicate1D)
   ultimately show \<open>p \<in> V\<close> 
@@ -2024,7 +2029,7 @@ theorem main\<^sub>T: \<open>G \<TTurnstile>\<^sub>T p \<longleftrightarrow> G \
 corollary \<open>G \<TTurnstile>\<^sub>T p \<longrightarrow> reflexive; G \<TTurnstile>\<star> p\<close> if \<open>finite G\<close>
   using strong_soundness\<^sub>T[of G p] strong_completeness\<^sub>T[of G p] that by fast
 
-(*
+(*Following is the extension to symmetric frames which didn't work
 section \<open>System KB\<close>
 
 inductive AxB :: \<open>'i fm \<Rightarrow> bool\<close> where
