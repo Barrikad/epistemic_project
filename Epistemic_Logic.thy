@@ -1012,6 +1012,7 @@ primrec sub_C where
   \<open>sub_C (K i p) = insert (K i p) (sub_C p)\<close> |
   \<open>sub_C (Ev g p) = {K i p | i. i \<in> set g} \<union> insert (Ev g p) (sub_C p)\<close> |
   \<open>sub_C (Co g p) = 
+    {K i p | i. i \<in> set g} \<union>
     {K i (p \<^bold>\<and> Co g p) | i. i \<in> set g} \<union> 
     {Ev g (p \<^bold>\<and> Co g p), p \<^bold>\<and> Co g p, Co g p} \<union> sub_C p\<close> |
   \<open>sub_C (Di g p) = insert (Di g p) (sub_C p)\<close>
@@ -1310,23 +1311,100 @@ proof-
   qed 
 qed
 
+
+lemma truth_lemma_Ka: 
+  fixes p :: \<open>('i :: countable) fm\<close>
+  assumes prems: \<open>V \<in> mcss A \<phi>\<close> \<open>K i p \<in> sub_C' \<phi>\<close>
+  assumes hyp: \<open>\<And> V. V \<in> mcss A \<phi> \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> p\<close>
+  assumes \<open>canonical A \<phi>, V \<Turnstile> K i p\<close> 
+  shows \<open>K i p \<in> V\<close>
+proof-
+  from \<open>K i p \<in> sub_C' \<phi>\<close> have \<open>p \<in> sub_C \<phi>\<close> 
+    by (metis (mono_tags, lifting) Un_iff fm.distinct(53) image_iff insert_iff p_in_sub_C_p sub_C.simps(6) sub_C_transitive)
+  then have \<open>\<^bold>\<not> p \<in> sub_C' \<phi>\<close> 
+    by simp
+  moreover have \<open>\<forall> p. K i p \<in> V \<longrightarrow> p \<in> sub_C' \<phi>\<close>
+    using \<open>V \<in> mcss A \<phi>\<close> 
+    by (smt (verit, ccfv_SIG) Un_iff fm.distinct(53) image_iff insert_absorb insert_iff insert_subset mem_Collect_eq p_in_sub_C_p sub_C.simps(6) sub_C_transitive)
+  ultimately have \<open>{\<^bold>\<not> p} \<union> known V i \<subseteq> sub_C' \<phi>\<close>
+    by auto
+
+  have \<open>\<not> consistent A ({\<^bold>\<not> p} \<union> known V i)\<close>
+  proof
+    assume \<open>consistent A ({\<^bold>\<not> p} \<union> known V i)\<close>
+    then obtain W where W: \<open>{\<^bold>\<not> p} \<union> known V i \<subseteq> W\<close> \<open>W \<subseteq> sub_C' \<phi>\<close> \<open>consistent A W\<close> \<open>maximal' A \<phi> W\<close>
+      using \<open>{\<^bold>\<not> p} \<union> known V i \<subseteq> sub_C' \<phi>\<close> \<open>V \<in> mcss A \<phi>\<close> maximal_extension' by (smt (verit, best))
+    then have \<open>canonical A \<phi>, W \<Turnstile> \<^bold>\<not> p\<close>
+      using \<open>V \<in> mcss A \<phi>\<close> exactly_one_in_maximal' 
+      by (smt (verit) Imp_intro comp.simps(1) hyp insertCI mem_Collect_eq subset_iff sup.boundedE)
+    moreover have \<open>W \<in> reach A i V\<close> \<open>W \<in> mcss A \<phi>\<close>
+      using W by simp_all
+    ultimately have \<open>canonical A \<phi>, V \<Turnstile> \<^bold>\<not> K i p\<close>
+      by auto
+    then show False
+      using \<open>canonical A \<phi>, V \<Turnstile> K i p\<close> by auto
+  qed
+
+  then obtain W where W:
+    \<open>{\<^bold>\<not> p} \<union> W \<subseteq> {\<^bold>\<not> p} \<union> known V i\<close> \<open>(\<^bold>\<not> p) \<notin> W\<close> \<open>finite W\<close> \<open>\<not> consistent A ({\<^bold>\<not> p} \<union> W)\<close>
+    using exists_finite_inconsistent by metis
+
+  obtain L where L: \<open>set L = W\<close>
+    using \<open>finite W\<close> finite_list by blast
+
+  then have \<open>A \<turnstile> L \<^bold>\<leadsto> p\<close>
+    using W(4) inconsistent_imply by blast
+  then have \<open>A \<turnstile> K i (L \<^bold>\<leadsto> p)\<close>
+    using R2 by fast
+  then have \<open>A \<turnstile> map (K i) L \<^bold>\<leadsto> K i p\<close>
+    using K_distrib_K_imp by fast
+  moreover have \<open>set (map (K i) L) \<subseteq> V\<close> 
+    using L W(1,2) by auto
+  moreover have \<open>set (map (K i) L) \<subseteq> sub_C' \<phi>\<close> 
+    using calculation(2) prems(1) by blast
+  ultimately show \<open>K i p \<in> V\<close>
+    using \<open>K i p \<in> sub_C' \<phi>\<close> consequent_in_maximal' prems(1) by blast
+qed
+
 (*exercise 3.28*)
 lemma Co_lemma:
-  fixes A \<phi> g p
+  fixes A \<phi> g 
+  fixes p :: \<open>('i :: countable) fm\<close>
   defines \<open>WCo \<equiv> {W. W \<in> mcss A \<phi> \<and> canonical A \<phi>, W \<Turnstile> Co g p}\<close>
+  assumes \<open>Co g p \<in> sub_C' \<phi>\<close>
   assumes \<open>set (map set \<w>) = WCo\<close>
   assumes \<open>\<phi>\<^sub>\<w> = disjunct (map conjunct \<w>)\<close>
+  assumes hyp: \<open>\<And> V. V \<in> mcss A \<phi> \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> p\<close>
   shows \<open>A \<turnstile> \<phi>\<^sub>\<w> \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close>
 proof -
   (*formulas named after the tasks in the exercise*)
+  have \<open>Co g p \<in> sub_C \<phi>\<close> 
+    using assms(2) by auto
   have a: \<open>i \<in> set g \<Longrightarrow> w \<in> set \<w> \<Longrightarrow> A \<turnstile> \<^bold>\<And> w \<^bold>\<longrightarrow> K i p\<close> for w i
   proof-
+    assume \<open>i \<in> set g\<close>
     assume \<open>w \<in> set \<w>\<close>
     then have \<open>set w \<in> WCo\<close>
       using \<open>set (map set \<w>) = WCo\<close> by auto
-    then have \<open>set w \<in> mcss A \<phi> \<and> canonical A \<phi>, set w \<Turnstile> Co g p\<close>
-      unfolding WCo_def sorry
-    show ?thesis sorry
+    then have \<open>set w \<in> mcss A \<phi>\<close> \<open>canonical A \<phi>, set w \<Turnstile> Co g p\<close>
+      unfolding WCo_def by simp_all
+    then have \<open>canonical A \<phi>, set w \<Turnstile> K i p\<close> 
+      using \<open>i \<in> set g\<close> by auto
+    moreover have \<open>K i p \<in> sub_C \<phi>\<close> 
+      using \<open>Co g p \<in> sub_C \<phi>\<close> \<open>i \<in> set g\<close> 
+      by (induct \<phi>) auto
+    ultimately have \<open>K i p \<in> set w\<close>
+      using hyp \<open>set w \<in> mcss A \<phi>\<close>  truth_lemma_Ka by blast
+    then show ?thesis 
+    proof (induct w)
+      case Nil
+      then show ?case 
+        by auto
+    next
+      case (Cons a w)
+      then show ?case 
+        by (metis K_imply_Cons K_imply_head R1 conjunct_implies_imply imply_implies_conjunct set_ConsD)
+    qed 
   qed
   define WNCo where \<open>WNCo \<equiv> {W \<in> mcss A \<phi>. \<not> canonical A \<phi>, W \<Turnstile> Co g p}\<close>
   have b: \<open>i \<in> set g \<Longrightarrow> w \<in> set \<w> \<Longrightarrow> set w' \<in> WNCo \<Longrightarrow> A \<turnstile> \<^bold>\<And> w \<^bold>\<longrightarrow> K i (\<^bold>\<not> (\<^bold>\<And> w'))\<close> for w' w i
@@ -1338,8 +1416,8 @@ proof -
     then have \<open>finite WNCo\<close> 
       unfolding WNCo_def by fastforce
     moreover have \<open>\<forall> w' \<in> WNCo. finite w'\<close> 
-      unfolding WNCo_def
-      by (metis (mono_tags, lifting) mem_Collect_eq rev_finite_subset sub_C'_finite)
+      unfolding WNCo_def 
+      by (smt (verit) mem_Collect_eq rev_finite_subset sub_C'_finite)
     ultimately show \<open>(\<And>\<w>'. set (map set \<w>') = WNCo \<Longrightarrow> thesis) \<Longrightarrow> thesis\<close>
       using list_of_lists_if_finite_set_of_sets by blast
   qed
@@ -1399,7 +1477,7 @@ proof -
     then have \<open>\<forall> \<phi>\<^sub>w \<in> set (map conjunct \<w>). A \<turnstile> \<phi>\<^sub>w \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close> 
       using C1b imp_chain by blast
     then show ?thesis
-      using assms(3) * by simp
+      using assms(4) * by simp
   qed
 qed
 
@@ -1425,49 +1503,8 @@ proof-
       by simp
   next 
     assume \<open>canonical A \<phi>, V \<Turnstile> K i p\<close> 
-    from \<open>p \<in> sub_C \<phi>\<close> have \<open>\<^bold>\<not> p \<in> sub_C' \<phi>\<close> 
-      by simp
-    moreover have \<open>\<forall> p. K i p \<in> V \<longrightarrow> p \<in> sub_C' \<phi>\<close>
-      using \<open>V \<in> mcss A \<phi>\<close> 
-      by (smt (verit, ccfv_SIG) Un_iff fm.distinct(53) image_iff insert_absorb insert_iff insert_subset mem_Collect_eq p_in_sub_C_p sub_C.simps(6) sub_C_transitive)
-    ultimately have \<open>{\<^bold>\<not> p} \<union> known V i \<subseteq> sub_C' \<phi>\<close>
-      by auto
-
-    have \<open>\<not> consistent A ({\<^bold>\<not> p} \<union> known V i)\<close>
-    proof
-      assume \<open>consistent A ({\<^bold>\<not> p} \<union> known V i)\<close>
-      then obtain W where W: \<open>{\<^bold>\<not> p} \<union> known V i \<subseteq> W\<close> \<open>W \<subseteq> sub_C' \<phi>\<close> \<open>consistent A W\<close> \<open>maximal' A \<phi> W\<close>
-        using \<open>{\<^bold>\<not> p} \<union> known V i \<subseteq> sub_C' \<phi>\<close> \<open>V \<in> mcss A \<phi>\<close> maximal_extension' by (smt (verit))
-      then have \<open>canonical A \<phi>, W \<Turnstile> \<^bold>\<not> p\<close>
-        using \<open>V \<in> mcss A \<phi>\<close> exactly_one_in_maximal' 
-        by (smt (verit) Imp_intro comp.simps(1) hyp insertCI mem_Collect_eq subset_iff sup.boundedE)
-      moreover have \<open>W \<in> reach A i V\<close> \<open>W \<in> mcss A \<phi>\<close>
-        using W by simp_all
-      ultimately have \<open>canonical A \<phi>, V \<Turnstile> \<^bold>\<not> K i p\<close>
-        by auto
-      then show False
-        using \<open>canonical A \<phi>, V \<Turnstile> K i p\<close> by auto
-    qed
-
-    then obtain W where W:
-      \<open>{\<^bold>\<not> p} \<union> W \<subseteq> {\<^bold>\<not> p} \<union> known V i\<close> \<open>(\<^bold>\<not> p) \<notin> W\<close> \<open>finite W\<close> \<open>\<not> consistent A ({\<^bold>\<not> p} \<union> W)\<close>
-      using exists_finite_inconsistent by metis
-
-    obtain L where L: \<open>set L = W\<close>
-      using \<open>finite W\<close> finite_list by blast
-
-    then have \<open>A \<turnstile> L \<^bold>\<leadsto> p\<close>
-      using W(4) inconsistent_imply by blast
-    then have \<open>A \<turnstile> K i (L \<^bold>\<leadsto> p)\<close>
-      using R2 by fast
-    then have \<open>A \<turnstile> map (K i) L \<^bold>\<leadsto> K i p\<close>
-      using K_distrib_K_imp by fast
-    moreover have \<open>set (map (K i) L) \<subseteq> V\<close> 
-      using L W(1,2) by auto
-    moreover have \<open>set (map (K i) L) \<subseteq> sub_C' \<phi>\<close> 
-      using calculation(2) prems(1) by blast
-    ultimately show \<open>K i p \<in> V\<close>
-      using \<open>K i p \<in> sub_C' \<phi>\<close> consequent_in_maximal' prems(1) by blast
+    then show \<open>K i p \<in> V\<close>
+      using truth_lemma_Ka prems hyp by blast
   qed
 qed
 
@@ -1532,12 +1569,14 @@ qed
 
 lemma truth_lemma:
   fixes p :: \<open>('i :: countable) fm\<close>
-  assumes \<open>p \<in> sub_C' \<phi>\<close> and \<open>V \<subseteq> sub_C' \<phi>\<close> and \<open>consistent A V\<close> and \<open>maximal' A \<phi> V\<close>
+  assumes \<open>p \<in> sub_C' \<phi>\<close> and \<open>V \<in> mcss A \<phi>\<close>
   shows \<open>p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> p\<close>
   using assms
 proof (induct p arbitrary: V)
   case FF
-  then show ?case
+  have \<open>V \<subseteq> sub_C' \<phi>\<close> \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close>
+    using \<open>V \<in> mcss A \<phi>\<close> by simp_all
+  show ?case
   proof safe
     assume \<open>\<^bold>\<bottom> \<in> V\<close>
     then have False
@@ -1555,7 +1594,9 @@ next
     by simp
 next
   case (Dis p q)
-  then have \<open>p \<^bold>\<or> q \<in> sub_C \<phi>\<close> 
+  have \<open>V \<subseteq> sub_C' \<phi>\<close> \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close>
+    using \<open>V \<in> mcss A \<phi>\<close> by simp_all
+  from Dis have \<open>p \<^bold>\<or> q \<in> sub_C \<phi>\<close> 
     by auto
   moreover have \<open>p \<in> sub_C (p \<^bold>\<or> q) \<and> q \<in> sub_C (p \<^bold>\<or> q)\<close> 
     by (simp add: p_in_sub_C_p)
@@ -1577,9 +1618,9 @@ next
         using p_or_q_cons ..
     qed
     then have \<open>p \<in> sub_C' \<phi> \<or> q \<in> sub_C' \<phi>\<close> 
-      using Dis.prems(2) by blast
-    then show \<open>canonical A \<phi>, V \<Turnstile> (p \<^bold>\<or> q)\<close>
-      using Dis by (metis (mono_tags, lifting) \<open>p \<in> V \<or> q \<in> V\<close> semantics.simps(3) subsetD)
+      using Dis.prems by blast
+    then show \<open>canonical A \<phi>, V \<Turnstile> (p \<^bold>\<or> q)\<close> 
+      using Dis by (smt (verit, best) \<open>p \<in> V \<or> q \<in> V\<close> p_q_in_phi semantics.simps(3))
   next
     assume a: \<open>canonical A \<phi>, V \<Turnstile> (p \<^bold>\<or> q)\<close> 
     consider \<open>canonical A \<phi>, V \<Turnstile> p\<close> | \<open>canonical A \<phi>, V \<Turnstile> q\<close>
@@ -1589,11 +1630,13 @@ next
     moreover have \<open>A \<turnstile> p \<^bold>\<longrightarrow> p \<^bold>\<or> q\<close> \<open>A \<turnstile> q \<^bold>\<longrightarrow> p \<^bold>\<or> q\<close>
       by (auto simp: A1)
     ultimately show \<open>(p \<^bold>\<or> q) \<in> V\<close>
-      using Dis.prems by (metis consistent_consequent maximal'_def)
+      using Dis.prems consistent_consequent maximal'_def by fast
   qed
 next
   case (Con p q)
-  then have \<open>p \<^bold>\<and> q \<in> sub_C \<phi>\<close> 
+  have \<open>V \<subseteq> sub_C' \<phi>\<close> \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close>
+    using \<open>V \<in> mcss A \<phi>\<close> by simp_all
+  from Con have \<open>p \<^bold>\<and> q \<in> sub_C \<phi>\<close> 
     by auto
   moreover have \<open>p \<in> sub_C (p \<^bold>\<and> q) \<and> q \<in> sub_C (p \<^bold>\<and> q)\<close> 
     by (simp add: p_in_sub_C_p)
@@ -1623,11 +1666,13 @@ next
     moreover have \<open>set [p, q] \<subseteq> sub_C' \<phi>\<close>
       using \<open>p \<in> sub_C \<phi> \<and> q \<in> sub_C \<phi>\<close> by auto
     ultimately show \<open>(p \<^bold>\<and> q) \<in> V\<close>
-      using Con.prems consequent_in_maximal' by metis
+      using Con.prems consequent_in_maximal' by blast
   qed
 next
   case (Imp p q)
-  then have \<open>p \<^bold>\<longrightarrow> q \<in> sub_C \<phi> \<or> q = \<^bold>\<bottom>\<close> 
+  have \<open>V \<subseteq> sub_C' \<phi>\<close> \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close>
+    using \<open>V \<in> mcss A \<phi>\<close> by simp_all
+  from Imp have \<open>p \<^bold>\<longrightarrow> q \<in> sub_C \<phi> \<or> q = \<^bold>\<bottom>\<close> 
     by auto
   moreover have \<open>p \<in> sub_C (p \<^bold>\<longrightarrow> q) \<and> q \<in> sub_C (p \<^bold>\<longrightarrow> q)\<close> 
     by (simp add: p_in_sub_C_p)
@@ -1655,7 +1700,7 @@ next
       proof cases
         case a
         then show ?thesis
-          using Imp.hyps(2) Imp.prems(2) Imp.prems(3) Imp.prems(4) p_q_in_phi by blast
+          using Imp p_q_in_phi by blast
       next
         case b
         then consider (x)\<open>\<^bold>\<not> q \<in> V\<close> | (y)\<open>q = \<^bold>\<bottom>\<close>
@@ -1677,13 +1722,13 @@ next
             by (metis bot.extremum empty_set insert_subsetI list.simps(15))
         qed
         then show ?thesis 
-          by (simp add: Imp.prems(3))
+          by (simp add: \<open>consistent A V\<close>)
       qed
     next
       case 2
       then have \<open>p \<notin> V\<close> 
-        using Imp.prems(3) Imp.prems(4) exactly_one_in_maximal' p_q_in_phi comp.simps(1)
-        by (metis Imp.prems(2) subsetD)
+        using Imp.prems exactly_one_in_maximal' p_q_in_phi comp.simps(1)
+        by (smt (verit, del_insts) mem_Collect_eq subset_iff)
       then show ?thesis 
         using Imp p_q_in_phi by blast
     qed
@@ -1696,11 +1741,12 @@ next
     moreover have \<open>p \<in> sub_C' \<phi>\<close> 
       using p_q_in_phi by auto
     ultimately have \<open>(\<^bold>\<not> p) \<in> V \<or> q \<in> V\<close>
-      by (metis Imp.prems(3) Imp.prems(4) UnI2 \<open>p \<in> sub_C \<phi> \<and> (q \<in> sub_C \<phi> \<or> q = \<^bold>\<bottom>)\<close> consistent_extend_by_p imageI maximal'_def)
+      using \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>p \<in> sub_C \<phi> \<and> (q \<in> sub_C \<phi> \<or> q = \<^bold>\<bottom>)\<close> consistent_extend_by_p imageI maximal'_def 
+      by (smt (verit) Un_iff)
     moreover have \<open>A \<turnstile> \<^bold>\<not> p \<^bold>\<longrightarrow> p \<^bold>\<longrightarrow> q\<close> \<open>A \<turnstile> q \<^bold>\<longrightarrow> p \<^bold>\<longrightarrow> q\<close>
       by (auto simp: A1)             
     ultimately show \<open>(p \<^bold>\<longrightarrow> q) \<in> V\<close>
-      using Imp.prems by (metis consistent_consequent maximal'_def)
+      using Imp.prems consistent_consequent maximal'_def by fast
   qed
 next
   case (K i p)
@@ -1751,7 +1797,7 @@ next
       moreover have \<open>A \<turnstile> Co g p \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> Co g p)\<close> 
         by (simp add: C2)
       ultimately have \<open>Ev g (p \<^bold>\<and> Co g p) \<in> W\<close>
-        using Co.prems(3) Co.prems(4) consistent_consequent maximal'_def \<open>Ev g (p \<^bold>\<and> Co g p) \<in> sub_C' \<phi>\<close> by blast
+        using Co.prems consistent_consequent maximal'_def \<open>Ev g (p \<^bold>\<and> Co g p) \<in> sub_C' \<phi>\<close> by blast
       then have \<open>set [Ev g (p \<^bold>\<and> Co g p)] \<subseteq> W\<close>
         by simp
       moreover have \<open>set [Ev g (p \<^bold>\<and> Co g p)] \<subseteq> sub_C' \<phi>\<close>
@@ -1810,7 +1856,7 @@ next
       qed
     qed
     ultimately show \<open>canonical A \<phi>, V \<Turnstile> Co g p\<close>
-      by (simp add: Co.prems(2) Co.prems(3) Co.prems(4))
+      using Co.prems(2) by auto
   next
     have \<open>finite (mcss A \<phi>)\<close> 
       using finite_Collect_subsets sub_C'_finite by fastforce
@@ -1824,8 +1870,12 @@ next
     moreover obtain \<phi>\<^sub>\<w> where \<phi>\<^sub>\<w>_def:
       \<open>\<phi>\<^sub>\<w> = disjunct (map conjunct \<w>)\<close>
       by simp
+    moreover have \<open>\<And>V. V \<in> mcss A \<phi> \<Longrightarrow> (p \<in> V) = (\<lparr>\<W> = mcss A \<phi>, \<K> = \<lambda>i V. {W. known V i \<subseteq> W}, \<pi> = pi\<rparr>, V \<Turnstile> p)\<close>
+      using Co.hyps \<open>p \<in> sub_C' \<phi>\<close> by blast
+    moreover have \<open>Co g p \<in> sub_C' \<phi>\<close> 
+      using Co.prems(1) by auto
     ultimately have \<open>A \<turnstile> \<phi>\<^sub>\<w> \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close>
-      using Co_lemma by blast
+      using Co_lemma[where g = g and p = p and \<phi> = \<phi> and \<w> = \<w> and \<phi>\<^sub>\<w> = \<phi>\<^sub>\<w> and A = A]  by blast
     then have *:\<open>A \<turnstile> \<phi>\<^sub>\<w> \<^bold>\<longrightarrow> Co g p\<close>
       by (simp add: RC1)
 
@@ -1849,7 +1899,8 @@ next
     proof (rule ccontr)
       assume \<open>Co g p \<notin> V\<close>
       then have \<open>\<^bold>\<not>Co g p \<in> V\<close>
-        by (metis Co.prems comp.simps(16) exactly_one_in_maximal')
+        using Co.prems comp.simps(16) exactly_one_in_maximal' 
+        by (smt (verit, best) mem_Collect_eq)
       then have \<open>A; V \<turnstile> \<^bold>\<not>Co g p\<close>
         by (metis K_imply_head \<v>_def extract_from_list subset_refl)
       from this ** have \<open>A; V \<turnstile> \<^bold>\<not>\<phi>\<^sub>\<v>\<close>
@@ -1859,7 +1910,7 @@ next
       ultimately have \<open>A; V \<turnstile> \<^bold>\<bottom>\<close> 
         by (metis K_imply_weaken K_right_mp \<v>_def order_refl)
       then show False
-        using Co(4) by (simp add: consistent_def)
+        using Co consistent_def by blast
       qed
   qed
 next
