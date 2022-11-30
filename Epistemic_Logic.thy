@@ -242,6 +242,10 @@ primrec conjunct (\<open>\<^bold>\<And> _\<close> [64] 65) where
   \<open>\<^bold>\<And>[] = \<^bold>\<top>\<close> |
   \<open>\<^bold>\<And>x # xs = x \<^bold>\<and> \<^bold>\<And>xs\<close>
 
+fun comp where
+  \<open>comp (\<^bold>\<not>p) = p\<close> |
+  \<open>comp p = \<^bold>\<not>p\<close>
+
 abbreviation AK_assms (\<open>_; _ \<turnstile> _\<close> [50, 50, 50] 50) where
   \<open>A; G \<turnstile> p \<equiv> \<exists>qs. set qs \<subseteq> G \<and> (A \<turnstile> qs \<^bold>\<leadsto> p)\<close>
 
@@ -724,7 +728,7 @@ qed
 lemma K_trans: \<open>A \<turnstile> (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> (q \<^bold>\<longrightarrow> r) \<^bold>\<longrightarrow> p \<^bold>\<longrightarrow> r\<close>
   by (auto intro: A1)
 
-lemma K_L_dual: \<open>A \<turnstile> \<^bold>\<not> L i (\<^bold>\<not> p) \<^bold>\<longrightarrow> K i p\<close>
+lemma K_L_comp: \<open>A \<turnstile> \<^bold>\<not> L i (\<^bold>\<not> p) \<^bold>\<longrightarrow> K i p\<close>
 proof -
   have \<open>A \<turnstile> K i p \<^bold>\<longrightarrow> K i p\<close> \<open>A \<turnstile> \<^bold>\<not> \<^bold>\<not> p \<^bold>\<longrightarrow> p\<close>
     by (auto intro: A1)
@@ -831,6 +835,46 @@ lemma Ev_implies_K: \<open>i \<in> set g \<Longrightarrow> A \<turnstile> Ev g p
 
 lemma K_implies_combine: \<open>A \<turnstile> ps \<^bold>\<leadsto> q \<Longrightarrow> A \<turnstile> ps \<^bold>\<leadsto> r \<Longrightarrow> A \<turnstile> ps \<^bold>\<leadsto> (q \<^bold>\<and> r)\<close>
   by (metis K_ImpI K_imply_head K_right_mp con_imp_antecedents imply.simps(2))
+
+lemma comp_imp1: \<open>A \<turnstile> p \<^bold>\<longrightarrow> \<^bold>\<not>(comp p)\<close> 
+proof (cases \<open>\<exists> p'. p = \<^bold>\<not> p'\<close>)
+  case True
+  then obtain p' where \<open>p = \<^bold>\<not>p'\<close> ..
+  then have \<open>comp p = p'\<close>
+    by simp
+  then show ?thesis
+    by (simp add: A1 \<open>p = \<^bold>\<not> p'\<close>)
+next
+  case False
+  then have \<open>comp p = \<^bold>\<not>p\<close>
+  proof (cases p)
+    case (Imp p q)
+    then show ?thesis 
+      using False by (cases q) auto
+  qed auto
+  then show ?thesis 
+    by (simp add: A1)
+qed
+
+lemma comp_imp2: \<open>A \<turnstile> \<^bold>\<not>(comp p) \<^bold>\<longrightarrow> p\<close> 
+proof (cases \<open>\<exists> p'. p = \<^bold>\<not> p'\<close>)
+  case True
+  then obtain p' where \<open>p = \<^bold>\<not>p'\<close> ..
+  then have \<open>comp p = p'\<close>
+    by simp
+  then show ?thesis
+    by (metis \<open>p = \<^bold>\<not> p'\<close> comp_imp1)
+next
+  case False
+  then have \<open>comp p = \<^bold>\<not>p\<close>
+  proof (cases p)
+    case (Imp p q)
+    then show ?thesis 
+      using False by (cases q) auto
+  qed auto
+  then show ?thesis 
+    by (simp add: A1)
+qed
 
 section \<open>Strong Soundness\<close>
 
@@ -961,64 +1005,6 @@ lemma inconsistent_imply:
 
 subsection \<open>Maximal consistent sets\<close>
 
-definition maximal :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm set \<Rightarrow> bool\<close> where
-  \<open>maximal A S \<equiv> \<forall>p. p \<notin> S \<longrightarrow> \<not> consistent A ({p} \<union> S)\<close>
-
-theorem deriv_in_maximal:
-  assumes \<open>consistent A V\<close> \<open>maximal A V\<close> \<open>A \<turnstile> p\<close>
-  shows \<open>p \<in> V\<close>
-  using assms R1 inconsistent_subset unfolding consistent_def maximal_def
-  by (metis imply.simps(2))
-
-theorem exactly_one_in_maximal:
-  assumes \<open>consistent A V\<close> \<open>maximal A V\<close>
-  shows \<open>p \<in> V \<longleftrightarrow> (\<^bold>\<not> p) \<notin> V\<close>
-proof
-  assume \<open>p \<in> V\<close>
-  then show \<open>(\<^bold>\<not> p) \<notin> V\<close>
-    using assms K_mp unfolding consistent_def maximal_def
-    by (metis empty_subsetI insert_subset list.set(1) list.simps(15))
-next
-  assume \<open>(\<^bold>\<not> p) \<notin> V\<close>
-  have \<open>A \<turnstile> (p \<^bold>\<or> \<^bold>\<not> p)\<close>
-    by (simp add: A1)
-  then have \<open>(p \<^bold>\<or> \<^bold>\<not> p) \<in> V\<close>
-    using assms deriv_in_maximal by blast
-  then have \<open>consistent A ({p} \<union> V) \<or> consistent A ({\<^bold>\<not> p} \<union> V)\<close>
-    using assms consistent_disjuncts by blast
-  then show \<open>p \<in> V\<close>
-    using \<open>maximal A V\<close> \<open>(\<^bold>\<not> p) \<notin> V\<close> unfolding maximal_def by blast
-qed
-
-theorem consequent_in_maximal:
-  assumes \<open>consistent A V\<close> \<open>maximal A V\<close> \<open>p \<in> V\<close> \<open>(p \<^bold>\<longrightarrow> q) \<in> V\<close>
-  shows \<open>q \<in> V\<close>
-proof -
-  have \<open>\<forall>V'. set V' \<subseteq> V \<longrightarrow> \<not> (A \<turnstile> p # (p \<^bold>\<longrightarrow> q) # V' \<^bold>\<leadsto> \<^bold>\<bottom>)\<close>
-    using \<open>consistent A V\<close> \<open>p \<in> V\<close> \<open>(p \<^bold>\<longrightarrow> q) \<in> V\<close> unfolding consistent_def
-    by (metis insert_subset list.simps(15))
-  then have \<open>\<forall>V'. set V' \<subseteq> V \<longrightarrow> \<not> (A \<turnstile> q # V' \<^bold>\<leadsto> \<^bold>\<bottom>)\<close>
-    by (meson K_mp K_ImpI K_imply_weaken K_right_mp set_subset_Cons)
-  then have \<open>consistent A ({q} \<union> V)\<close>
-    using \<open>consistent A V\<close> inconsistent_subset by metis
-  then show ?thesis
-    using \<open>maximal A V\<close> unfolding maximal_def by fast
-qed
-
-theorem ax_in_maximal:
-  assumes \<open>consistent A V\<close> \<open>maximal A V\<close> \<open>A p\<close>
-  shows \<open>p \<in> V\<close>
-  using assms deriv_in_maximal Ax by blast
-
-theorem mcs_properties:
-  assumes \<open>consistent A V\<close> and \<open>maximal A V\<close>
-  shows \<open>A \<turnstile> p \<Longrightarrow> p \<in> V\<close>
-    and \<open>p \<in> V \<longleftrightarrow> (\<^bold>\<not> p) \<notin> V\<close>
-    and \<open>p \<in> V \<Longrightarrow> (p \<^bold>\<longrightarrow> q) \<in> V \<Longrightarrow> q \<in> V\<close>
-  using assms deriv_in_maximal exactly_one_in_maximal consequent_in_maximal by blast+
-
-subsection \<open>sub_C^+ sets\<close>
-
 primrec sub_C where
   \<open>sub_C \<^bold>\<bottom> = {\<^bold>\<bottom>}\<close> |
   \<open>sub_C (Pro a) = {Pro a}\<close> |
@@ -1087,55 +1073,11 @@ proof (rule ccontr)
   qed
 qed
 
-fun dual where
-  \<open>dual (\<^bold>\<not>p) = p\<close> |
-  \<open>dual p = \<^bold>\<not>p\<close>
-
-lemma dual_imp1: \<open>A \<turnstile> p \<^bold>\<longrightarrow> \<^bold>\<not>(dual p)\<close> 
+lemma comp_in_sub_C: \<open>comp p \<in> sub_C' \<phi>\<close> if \<open>p \<in> sub_C' \<phi>\<close>
 proof (cases \<open>\<exists> p'. p = \<^bold>\<not> p'\<close>)
   case True
   then obtain p' where \<open>p = \<^bold>\<not>p'\<close> ..
-  then have \<open>dual p = p'\<close>
-    by simp
-  then show ?thesis
-    by (simp add: A1 \<open>p = \<^bold>\<not> p'\<close>)
-next
-  case False
-  then have \<open>dual p = \<^bold>\<not>p\<close>
-  proof (cases p)
-    case (Imp p q)
-    then show ?thesis 
-      using False by (cases q) auto
-  qed auto
-  then show ?thesis 
-    by (simp add: A1)
-qed
-
-lemma dual_imp2: \<open>A \<turnstile> \<^bold>\<not>(dual p) \<^bold>\<longrightarrow> p\<close> 
-proof (cases \<open>\<exists> p'. p = \<^bold>\<not> p'\<close>)
-  case True
-  then obtain p' where \<open>p = \<^bold>\<not>p'\<close> ..
-  then have \<open>dual p = p'\<close>
-    by simp
-  then show ?thesis
-    by (metis \<open>p = \<^bold>\<not> p'\<close> dual_imp1)
-next
-  case False
-  then have \<open>dual p = \<^bold>\<not>p\<close>
-  proof (cases p)
-    case (Imp p q)
-    then show ?thesis 
-      using False by (cases q) auto
-  qed auto
-  then show ?thesis 
-    by (simp add: A1)
-qed
-
-lemma dual_in_sub_C: \<open>dual p \<in> sub_C' \<phi>\<close> if \<open>p \<in> sub_C' \<phi>\<close>
-proof (cases \<open>\<exists> p'. p = \<^bold>\<not> p'\<close>)
-  case True
-  then obtain p' where \<open>p = \<^bold>\<not>p'\<close> ..
-  then have \<open>dual p = p'\<close>
+  then have \<open>comp p = p'\<close>
     by simp
   have \<open>p' \<in> sub_C' \<phi>\<close>
   proof (cases \<open>p \<in> sub_C \<phi>\<close>)
@@ -1151,13 +1093,13 @@ proof (cases \<open>\<exists> p'. p = \<^bold>\<not> p'\<close>)
   next
     case False
     then show ?thesis
-      using \<open>dual p = p'\<close> \<open>p \<in> sub_C' \<phi>\<close> by fastforce
+      using \<open>comp p = p'\<close> \<open>p \<in> sub_C' \<phi>\<close> by fastforce
   qed
   then show ?thesis 
-    by (simp add: \<open>dual p = p'\<close>)
+    by (simp add: \<open>comp p = p'\<close>)
 next
   case False
-  then have \<open>dual p = \<^bold>\<not>p\<close>
+  then have \<open>comp p = \<^bold>\<not>p\<close>
   proof (cases p)
     case (Imp p q)
     then show ?thesis 
@@ -1194,28 +1136,28 @@ qed
 
 lemma exactly_one_in_maximal': 
   assumes \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>p \<in> sub_C' \<phi>\<close> \<open>V \<subseteq> sub_C' \<phi>\<close>
-  shows \<open>p \<in> V \<longleftrightarrow> dual p \<notin> V\<close> 
+  shows \<open>p \<in> V \<longleftrightarrow> comp p \<notin> V\<close> 
 proof
   assume \<open>p \<in> V\<close>
-  have \<open>A \<turnstile> p \<^bold>\<longrightarrow> \<^bold>\<not>(dual p)\<close>
-    by (simp add: dual_imp1)
-  then have \<open>A \<turnstile> [dual p,p] \<^bold>\<leadsto> \<^bold>\<bottom>\<close>
+  have \<open>A \<turnstile> p \<^bold>\<longrightarrow> \<^bold>\<not>(comp p)\<close>
+    by (simp add: comp_imp1)
+  then have \<open>A \<turnstile> [comp p,p] \<^bold>\<leadsto> \<^bold>\<bottom>\<close>
     by (metis K_swap imply.simps(1) imply.simps(2))
-  then show \<open>dual p \<notin> V\<close>
+  then show \<open>comp p \<notin> V\<close>
     using \<open>consistent A V\<close> \<open>p \<in> sub_C' \<phi>\<close> \<open>p \<in> V\<close> 
     by (metis Un_insert_right consistent_def empty_set inf_sup_ord(4) insert_absorb list.simps(15) sup_bot.right_neutral)
 next
-  assume \<open>dual p \<notin> V\<close>
-  then have \<open>\<not> consistent A ({dual p} \<union> V)\<close>
-    using dual_in_sub_C assms unfolding maximal'_def by auto
-  then obtain qs where qs_def: \<open>set qs \<subseteq> V\<close> \<open>A \<turnstile> (dual p) # qs \<^bold>\<leadsto> \<^bold>\<bottom>\<close>
+  assume \<open>comp p \<notin> V\<close>
+  then have \<open>\<not> consistent A ({comp p} \<union> V)\<close>
+    using comp_in_sub_C assms unfolding maximal'_def by auto
+  then obtain qs where qs_def: \<open>set qs \<subseteq> V\<close> \<open>A \<turnstile> (comp p) # qs \<^bold>\<leadsto> \<^bold>\<bottom>\<close>
     by (meson assms(1) inconsistent_subset)
-  then have \<open>A \<turnstile> qs \<^bold>\<leadsto> \<^bold>\<not>(dual p)\<close>
+  then have \<open>A \<turnstile> qs \<^bold>\<leadsto> \<^bold>\<not>(comp p)\<close>
     by (simp add: K_ImpI)
   then have \<open>A \<turnstile> qs \<^bold>\<leadsto> p\<close> 
-    by (simp add: dual_imp2 imply_chain)
+    by (simp add: comp_imp2 imply_chain)
   then show \<open>p \<in> V\<close>
-    using assms \<open>set qs \<subseteq> V\<close> deriv_in_maximal' dual_in_sub_C 
+    using assms \<open>set qs \<subseteq> V\<close> deriv_in_maximal' comp_in_sub_C 
     by (smt (verit) consequent_in_maximal' dual_order.trans)
 qed
 
@@ -1224,26 +1166,6 @@ subsection \<open>Lindenbaum extension\<close>
 instantiation fm :: (countable) countable begin
 instance by countable_datatype
 end
-
-primrec extend :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm set \<Rightarrow> (nat \<Rightarrow> 'i fm) \<Rightarrow> nat \<Rightarrow> 'i fm set\<close> where
-  \<open>extend A S f 0 = S\<close>
-| \<open>extend A S f (Suc n) =
-    (if consistent A ({f n} \<union> extend A S f n)
-     then {f n} \<union> extend A S f n
-     else extend A S f n)\<close>
-
-definition Extend :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm set \<Rightarrow> (nat \<Rightarrow> 'i fm) \<Rightarrow> 'i fm set\<close> where
-  \<open>Extend A S f \<equiv> \<Union>n. extend A S f n\<close>
-
-lemma Extend_subset: \<open>S \<subseteq> Extend A S f\<close>
-  unfolding Extend_def using Union_upper extend.simps(1) range_eqI
-  by metis
-
-lemma extend_bound: \<open>(\<Union>n \<le> m. extend A S f n) = extend A S f m\<close>
-  by (induct m) (simp_all add: atMost_Suc)
-
-lemma consistent_extend: \<open>consistent A S \<Longrightarrow> consistent A (extend A S f n)\<close>
-  by (induct n) simp_all
 
 lemma UN_finite_bound:
   assumes \<open>finite A\<close> \<open>A \<subseteq> (\<Union>n. f n)\<close>
@@ -1262,63 +1184,6 @@ proof (induct rule: finite_induct)
   then show ?case
     by blast
 qed simp
-
-lemma consistent_Extend:
-  assumes \<open>consistent A S\<close>
-  shows \<open>consistent A (Extend A S f)\<close>
-  unfolding Extend_def
-proof (rule ccontr)
-  assume \<open>\<not> consistent A (\<Union>n. extend A S f n)\<close>
-  then obtain S' where \<open>A \<turnstile> S' \<^bold>\<leadsto> \<^bold>\<bottom>\<close> \<open>set S' \<subseteq> (\<Union>n. extend A S f n)\<close>
-    unfolding consistent_def by blast
-  then obtain m where \<open>set S' \<subseteq> (\<Union>n \<le> m. extend A S f n)\<close>
-    using UN_finite_bound by (metis List.finite_set)
-  then have \<open>set S' \<subseteq> extend A S f m\<close>
-    using extend_bound by blast
-  moreover have \<open>consistent A (extend A S f m)\<close>
-    using assms consistent_extend by blast
-  ultimately show False
-    unfolding consistent_def using \<open>A \<turnstile> S' \<^bold>\<leadsto> \<^bold>\<bottom>\<close> by blast
-qed
-
-lemma maximal_Extend:
-  assumes \<open>surj f\<close>
-  shows \<open>maximal A (Extend A S f)\<close>
-proof (rule ccontr)
-  assume \<open>\<not> maximal A (Extend A S f)\<close>
-  then obtain p where \<open>p \<notin> Extend A S f\<close> \<open>consistent A ({p} \<union> Extend A S f)\<close>
-    unfolding maximal_def using assms consistent_Extend by blast
-  obtain k where n: \<open>f k = p\<close>
-    using \<open>surj f\<close> unfolding surj_def by metis
-  then have \<open>p \<notin> extend A S f (Suc k)\<close>
-    using \<open>p \<notin> Extend A S f\<close> unfolding Extend_def by blast
-  then have \<open>\<not> consistent A ({p} \<union> extend A S f k)\<close>
-    using n by fastforce
-  moreover have \<open>{p} \<union> extend A S f k \<subseteq> {p} \<union> Extend A S f\<close>
-    unfolding Extend_def by blast
-  ultimately have \<open>\<not> consistent A ({p} \<union> Extend A S f)\<close>
-    unfolding consistent_def by fastforce
-  then show False
-    using \<open>consistent A ({p} \<union> Extend A S f)\<close> by blast
-qed
-
-lemma maximal_extension:
-  fixes V :: \<open>('i :: countable) fm set\<close>
-  assumes \<open>consistent A V\<close>
-  obtains W where \<open>V \<subseteq> W\<close> \<open>consistent A W\<close> \<open>maximal A W\<close>
-proof -
-  let ?W = \<open>Extend A V from_nat\<close>
-  have \<open>V \<subseteq> ?W\<close>
-    using Extend_subset by blast
-  moreover have \<open>consistent A ?W\<close>
-    using assms consistent_Extend by blast
-  moreover have \<open>maximal A ?W\<close>
-    using assms maximal_Extend surj_from_nat by blast
-  ultimately show ?thesis
-    using that by blast
-qed
-
-subsection \<open>Lindenbaum extension sub_C^+\<close>
 
 primrec extend' :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm \<Rightarrow> 'i fm set \<Rightarrow> (nat \<Rightarrow> 'i fm) \<Rightarrow> nat \<Rightarrow> 'i fm set\<close> where
   \<open>extend' A \<phi> S f 0 = S\<close>
@@ -1559,7 +1424,7 @@ proof-
         using \<open>{\<^bold>\<not> p} \<union> known V i \<subseteq> sub_C' \<phi>\<close> \<open>V \<in> mcss A \<phi>\<close> maximal_extension' by (smt (verit))
       then have \<open>canonical A \<phi>, W \<Turnstile> \<^bold>\<not> p\<close>
         using \<open>V \<in> mcss A \<phi>\<close> exactly_one_in_maximal' 
-        by (smt (verit) Imp_intro dual.simps(1) hyp insertCI mem_Collect_eq subset_iff sup.boundedE)
+        by (smt (verit) Imp_intro comp.simps(1) hyp insertCI mem_Collect_eq subset_iff sup.boundedE)
       moreover have \<open>W \<in> reach A i V\<close> \<open>W \<in> mcss A \<phi>\<close>
         using W by simp_all
       ultimately have \<open>canonical A \<phi>, V \<Turnstile> \<^bold>\<not> K i p\<close>
@@ -1777,16 +1642,31 @@ next
           using Imp.hyps(2) Imp.prems(2) Imp.prems(3) Imp.prems(4) p_q_in_phi by blast
       next
         case b
+        then consider (x)\<open>\<^bold>\<not> q \<in> V\<close> | (y)\<open>q = \<^bold>\<bottom>\<close>
+          by auto
         then have \<open>\<not> consistent A V\<close>
-          using 1 \<open>(p \<^bold>\<longrightarrow> q) \<in> V\<close> 
-          by (meson consequent_in_maximal exactly_one_in_maximal maximal_extension subset_eq)
+        proof cases
+          case x
+          moreover have \<open>A \<turnstile> [p,p \<^bold>\<longrightarrow> q,\<^bold>\<not>q] \<^bold>\<leadsto> \<^bold>\<bottom>\<close> 
+            using A1 by force
+          ultimately show ?thesis 
+            using 1 \<open>(p \<^bold>\<longrightarrow> q) \<in> V\<close> unfolding consistent_def
+            by (metis Un_Diff_cancel empty_set insert_Diff insert_is_Un insert_subsetI le_iff_sup list.simps(15))
+        next
+          case y
+          then have \<open>A \<turnstile> [p,p \<^bold>\<longrightarrow> q] \<^bold>\<leadsto> \<^bold>\<bottom>\<close>
+            using A1 by force
+          then show ?thesis 
+            using 1 \<open>(p \<^bold>\<longrightarrow> q) \<in> V\<close> unfolding consistent_def 
+            by (metis bot.extremum empty_set insert_subsetI list.simps(15))
+        qed
         then show ?thesis 
           by (simp add: Imp.prems(3))
       qed
     next
       case 2
       then have \<open>p \<notin> V\<close> 
-        using Imp.prems(3) Imp.prems(4) exactly_one_in_maximal' p_q_in_phi dual.simps(1)
+        using Imp.prems(3) Imp.prems(4) exactly_one_in_maximal' p_q_in_phi comp.simps(1)
         by (metis Imp.prems(2) subsetD)
       then show ?thesis 
         using Imp p_q_in_phi by blast
@@ -1953,7 +1833,7 @@ next
     proof (rule ccontr)
       assume \<open>Co g p \<notin> V\<close>
       then have \<open>\<^bold>\<not>Co g p \<in> V\<close>
-        by (metis Co.prems dual.simps(16) exactly_one_in_maximal')
+        by (metis Co.prems comp.simps(16) exactly_one_in_maximal')
       then have \<open>A; V \<turnstile> \<^bold>\<not>Co g p\<close>
         by (metis K_imply_head \<v>_def extract_from_list subset_refl)
       from this ** have \<open>A; V \<turnstile> \<^bold>\<not>\<phi>\<^sub>\<v>\<close>
@@ -2193,40 +2073,40 @@ proof -
     ultimately have \<open>p \<in> sub_C' \<phi>\<close> 
       by (metis (no_types, lifting) Un_iff fm.distinct(53) image_iff sub_C_transitive)
     moreover assume \<open>p \<notin> V\<close>
-    ultimately have \<open>dual p \<in> V\<close>
+    ultimately have \<open>comp p \<in> V\<close>
       using assms by (simp add: exactly_one_in_maximal')
-    then have \<open>set [dual p] \<subseteq> V\<close> 
+    then have \<open>set [comp p] \<subseteq> V\<close> 
       by simp
-    moreover have \<open>A \<turnstile> dual p \<^bold>\<longrightarrow> K i (L i (dual p))\<close> 
+    moreover have \<open>A \<turnstile> comp p \<^bold>\<longrightarrow> K i (L i (comp p))\<close> 
       by (metis Ax AxB.simps assms(1) rev_predicate1D)
-    ultimately have \<open>L i (dual p) \<in> known A V i\<close> 
+    ultimately have \<open>L i (comp p) \<in> known A V i\<close> 
       by fastforce
-    then have \<open>A; W \<turnstile> L i (dual p)\<close>
+    then have \<open>A; W \<turnstile> L i (comp p)\<close>
       using \<open>W \<in> reach A i V\<close> by simp
-    have \<open>A; W \<turnstile> K i p \<^bold>\<longrightarrow> L i (dual p) \<^bold>\<longrightarrow> \<^bold>\<bottom>\<close>
+    have \<open>A; W \<turnstile> K i p \<^bold>\<longrightarrow> L i (comp p) \<^bold>\<longrightarrow> \<^bold>\<bottom>\<close>
     proof-
-      have \<open>A \<turnstile> p \<^bold>\<longrightarrow> \<^bold>\<not>(dual p)\<close> 
-        using dual_imp1 by auto
-      then have \<open>A \<turnstile> K i (p \<^bold>\<longrightarrow> \<^bold>\<not>(dual p))\<close> 
+      have \<open>A \<turnstile> p \<^bold>\<longrightarrow> \<^bold>\<not>(comp p)\<close> 
+        using comp_imp1 by auto
+      then have \<open>A \<turnstile> K i (p \<^bold>\<longrightarrow> \<^bold>\<not>(comp p))\<close> 
         using R2 by fast
-      moreover have \<open>A \<turnstile> K i (p \<^bold>\<longrightarrow> \<^bold>\<not>(dual p)) \<^bold>\<longrightarrow> K i p \<^bold>\<longrightarrow> K i (\<^bold>\<not>(dual p))\<close>
+      moreover have \<open>A \<turnstile> K i (p \<^bold>\<longrightarrow> \<^bold>\<not>(comp p)) \<^bold>\<longrightarrow> K i p \<^bold>\<longrightarrow> K i (\<^bold>\<not>(comp p))\<close>
         by (simp add: K_A2')
-      moreover have \<open>A \<turnstile> K i (\<^bold>\<not>(dual p)) \<^bold>\<longrightarrow> L i (dual p) \<^bold>\<longrightarrow> \<^bold>\<bottom>\<close>
+      moreover have \<open>A \<turnstile> K i (\<^bold>\<not>(comp p)) \<^bold>\<longrightarrow> L i (comp p) \<^bold>\<longrightarrow> \<^bold>\<bottom>\<close>
         using A1 by force
-      ultimately have \<open>A \<turnstile> K i p \<^bold>\<longrightarrow> L i (dual p) \<^bold>\<longrightarrow> \<^bold>\<bottom>\<close>
+      ultimately have \<open>A \<turnstile> K i p \<^bold>\<longrightarrow> L i (comp p) \<^bold>\<longrightarrow> \<^bold>\<bottom>\<close>
         using R1 imp_chain by blast
       then show ?thesis 
         by (metis bot.extremum empty_set imply.simps(1))
     qed
-    then obtain qs where \<open>set qs \<subseteq> W \<and> A \<turnstile> qs \<^bold>\<leadsto> (K i p \<^bold>\<longrightarrow> L i (dual p) \<^bold>\<longrightarrow> \<^bold>\<bottom>)\<close>
+    then obtain qs where \<open>set qs \<subseteq> W \<and> A \<turnstile> qs \<^bold>\<leadsto> (K i p \<^bold>\<longrightarrow> L i (comp p) \<^bold>\<longrightarrow> \<^bold>\<bottom>)\<close>
       by fast
-    then have \<open>set (qs @ [K i p]) \<subseteq> W \<and> A \<turnstile> (qs @ [K i p]) \<^bold>\<leadsto> (L i (dual p) \<^bold>\<longrightarrow> \<^bold>\<bottom>)\<close> 
+    then have \<open>set (qs @ [K i p]) \<subseteq> W \<and> A \<turnstile> (qs @ [K i p]) \<^bold>\<leadsto> (L i (comp p) \<^bold>\<longrightarrow> \<^bold>\<bottom>)\<close> 
       using \<open>K i p \<in> W\<close> 
       by (simp add: imply_append)
-    then have \<open>A; W \<turnstile> L i (dual p) \<^bold>\<longrightarrow> \<^bold>\<bottom>\<close>
+    then have \<open>A; W \<turnstile> L i (comp p) \<^bold>\<longrightarrow> \<^bold>\<bottom>\<close>
       by fast
     then have \<open>A; W \<turnstile> \<^bold>\<bottom>\<close>
-      using \<open>A; W \<turnstile> L i (dual p)\<close> AK_assms_R1 by blast 
+      using \<open>A; W \<turnstile> L i (comp p)\<close> AK_assms_R1 by blast 
     then show False
       using assms(4) consistent_def by auto
   qed
@@ -2269,339 +2149,6 @@ theorem main\<^sub>K\<^sub>B: \<open>G \<TTurnstile>\<^sub>K\<^sub>B p \<longlef
 
 corollary \<open>G \<TTurnstile>\<^sub>K\<^sub>B p \<longrightarrow> symmetric; G \<TTurnstile>\<star> p\<close>
   using strong_soundness\<^sub>K\<^sub>B[of G p] strong_completeness\<^sub>K\<^sub>B[of G p] by fast
-
-section \<open>System K4\<close>
-
-inductive Ax4 :: \<open>'i fm \<Rightarrow> bool\<close> where
-  \<open>Ax4 (K i p \<^bold>\<longrightarrow> K i (K i p))\<close>
-
-abbreviation SystemK4 (\<open>_ \<turnstile>\<^sub>K\<^sub>4 _\<close> [50, 50] 50) where
-  \<open>G \<turnstile>\<^sub>K\<^sub>4 p \<equiv> Ax4; G \<turnstile> p\<close>
-
-lemma soundness_Ax4: \<open>Ax4 p \<Longrightarrow> transitive M \<Longrightarrow> w \<in> \<W> M \<Longrightarrow> M, w \<Turnstile> p\<close>
-  by (induct p rule: Ax4.induct) (meson pos_introspection)
-
-lemma strong_soundness\<^sub>K\<^sub>4: \<open>G \<turnstile>\<^sub>K\<^sub>4 p \<Longrightarrow> transitive; G \<TTurnstile>\<star> p\<close>
-  using strong_soundness soundness_Ax4 .
-
-lemma Ax4_transitive:
-  assumes \<open>Ax4 \<le> A\<close> \<open>consistent A V\<close> \<open>maximal A V\<close>
-    and \<open>W \<in> reach A i V\<close> \<open>U \<in> reach A i W\<close>
-  shows \<open>U \<in> reach A i V\<close>
-proof -
-  have \<open>(K i p \<^bold>\<longrightarrow> K i (K i p)) \<in> V\<close> for p
-    using assms(1-3) ax_in_maximal Ax4.intros by fast
-  then have \<open>K i (K i p) \<in> V\<close> if \<open>K i p \<in> V\<close> for p
-    using that assms(2-3) consequent_in_maximal by blast
-  then show ?thesis
-    using assms(4-5) by blast
-qed
-
-lemma transitive\<^sub>K\<^sub>4:
-  assumes \<open>Ax4 \<le> A\<close>
-  shows \<open>transitive (canonical A)\<close>
-  unfolding transitive_def
-proof safe
-  fix i U V W
-  assume \<open>V \<in> \<W> (canonical A)\<close>
-  then have \<open>consistent A V\<close> \<open>maximal A V\<close>
-    by simp_all
-  moreover assume
-    \<open>W \<in> \<K> (canonical A) i V\<close>
-    \<open>U \<in> \<K> (canonical A) i W\<close>
-  ultimately have \<open>U \<in> reach A i V\<close>
-    using Ax4_transitive assms by simp
-  then show \<open>U \<in> \<K> (canonical A) i V\<close>
-    by simp
-qed
-
-abbreviation validK4 (\<open>_ \<TTurnstile>\<^sub>K\<^sub>4 _\<close> [50, 50] 50) where
-  \<open>G \<TTurnstile>\<^sub>K\<^sub>4 p \<equiv> transitive; G \<TTurnstile> p\<close>
-
-lemma strong_completeness\<^sub>K\<^sub>4: \<open>G \<TTurnstile>\<^sub>K\<^sub>4 p \<Longrightarrow> G \<turnstile>\<^sub>K\<^sub>4 p\<close>
-  using strong_completeness transitive\<^sub>K\<^sub>4 by blast
-
-theorem main\<^sub>K\<^sub>4: \<open>G \<TTurnstile>\<^sub>K\<^sub>4 p \<longleftrightarrow> G \<turnstile>\<^sub>K\<^sub>4 p\<close>
-  using strong_soundness\<^sub>K\<^sub>4[of G p] strong_completeness\<^sub>K\<^sub>4[of G p] by fast
-
-corollary \<open>G \<TTurnstile>\<^sub>K\<^sub>4 p \<longrightarrow> transitive; G \<TTurnstile>\<star> p\<close>
-  using strong_soundness\<^sub>K\<^sub>4[of G p] strong_completeness\<^sub>K\<^sub>4[of G p] by fast
-
-section \<open>System K5\<close>
-
-inductive Ax5 :: \<open>'i fm \<Rightarrow> bool\<close> where
-  \<open>Ax5 (L i p \<^bold>\<longrightarrow> K i (L i p))\<close>
-
-abbreviation SystemK5 (\<open>_ \<turnstile>\<^sub>K\<^sub>5 _\<close> [50, 50] 50) where
-  \<open>G \<turnstile>\<^sub>K\<^sub>5 p \<equiv> Ax5; G \<turnstile> p\<close>
-
-lemma soundness_Ax5: \<open>Ax5 p \<Longrightarrow> Euclidean M \<Longrightarrow> w \<in> \<W> M \<Longrightarrow> M, w \<Turnstile> p\<close>
-  by (induct p rule: Ax5.induct) (unfold Euclidean_def semantics.simps, blast)
-
-lemma strong_soundness\<^sub>K\<^sub>5: \<open>G \<turnstile>\<^sub>K\<^sub>5 p \<Longrightarrow> Euclidean; G \<TTurnstile>\<star> p\<close>
-  using strong_soundness soundness_Ax5 .
-
-lemma Ax5_Euclidean:
-  assumes \<open>Ax5 \<le> A\<close>
-    \<open>consistent A U\<close> \<open>maximal A U\<close>
-    \<open>consistent A V\<close> \<open>maximal A V\<close>
-    \<open>consistent A W\<close> \<open>maximal A W\<close>
-    and \<open>V \<in> reach A i U\<close> \<open>W \<in> reach A i U\<close>
-  shows \<open>W \<in> reach A i V\<close>
-  using assms
-proof -
-  { fix p
-    assume \<open>K i p \<in> V\<close> \<open>p \<notin> W\<close>
-    then have \<open>(\<^bold>\<not> p) \<in> W\<close>
-      using assms(6-7) exactly_one_in_maximal by fast
-    then have \<open>L i (\<^bold>\<not> p) \<in> U\<close>
-      using assms(2-3, 6-7, 9) exactly_one_in_maximal by blast
-    then have \<open>K i (L i (\<^bold>\<not> p)) \<in> U\<close>
-      using assms(1-3) ax_in_maximal Ax5.intros consequent_in_maximal by fast
-    then have \<open>L i (\<^bold>\<not> p) \<in> V\<close>
-      using assms(8) by blast
-    then have \<open>\<^bold>\<not> K i p \<in> V\<close>
-      using assms(4-5) K_LK consequent_in_maximal deriv_in_maximal by fast
-    then have False
-      using assms(4-5) \<open>K i p \<in> V\<close> exactly_one_in_maximal by fast
-  }
-  then show ?thesis
-    by blast
-qed
-
-lemma Euclidean\<^sub>K\<^sub>5:
-  assumes \<open>Ax5 \<le> A\<close>
-  shows \<open>Euclidean (canonical A)\<close>
-  unfolding Euclidean_def
-proof safe
-  fix i U V W
-  assume \<open>U \<in> \<W> (canonical A)\<close> \<open>V \<in> \<W> (canonical A)\<close> \<open>W \<in> \<W> (canonical A)\<close>
-  then have
-    \<open>consistent A U\<close> \<open>maximal A U\<close>
-    \<open>consistent A V\<close> \<open>maximal A V\<close>
-    \<open>consistent A W\<close> \<open>maximal A W\<close>
-    by simp_all
-  moreover assume
-    \<open>V \<in> \<K> (canonical A) i U\<close>
-    \<open>W \<in> \<K> (canonical A) i U\<close>
-  ultimately have \<open>W \<in> reach A i V\<close>
-    using Ax5_Euclidean assms by simp
-  then show \<open>W \<in> \<K> (canonical A) i V\<close>
-    by simp
-qed
-
-abbreviation validK5 (\<open>_ \<TTurnstile>\<^sub>K\<^sub>5 _\<close> [50, 50] 50) where
-  \<open>G \<TTurnstile>\<^sub>K\<^sub>5 p \<equiv> Euclidean; G \<TTurnstile> p\<close>
-
-lemma strong_completeness\<^sub>K\<^sub>5: \<open>G \<TTurnstile>\<^sub>K\<^sub>5 p \<Longrightarrow> G \<turnstile>\<^sub>K\<^sub>5 p\<close>
-  using strong_completeness Euclidean\<^sub>K\<^sub>5 by blast
-
-theorem main\<^sub>K\<^sub>5: \<open>G \<TTurnstile>\<^sub>K\<^sub>5 p \<longleftrightarrow> G \<turnstile>\<^sub>K\<^sub>5 p\<close>
-  using strong_soundness\<^sub>K\<^sub>5[of G p] strong_completeness\<^sub>K\<^sub>5[of G p] by fast
-
-corollary \<open>G \<TTurnstile>\<^sub>K\<^sub>5 p \<longrightarrow> Euclidean; G \<TTurnstile>\<star> p\<close>
-  using strong_soundness\<^sub>K\<^sub>5[of G p] strong_completeness\<^sub>K\<^sub>5[of G p] by fast
-
-section \<open>System S4\<close>
-
-abbreviation Or :: \<open>('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> 'a \<Rightarrow> bool\<close> (infixl \<open>\<oplus>\<close> 65) where
-  \<open>(A \<oplus> A') p \<equiv> A p \<or> A' p\<close>
-
-abbreviation SystemS4 (\<open>_ \<turnstile>\<^sub>S\<^sub>4 _\<close> [50, 50] 50) where
-  \<open>G \<turnstile>\<^sub>S\<^sub>4 p \<equiv> AxT \<oplus> Ax4; G \<turnstile> p\<close>
-
-lemma soundness_AxT4: \<open>(AxT \<oplus> Ax4) p \<Longrightarrow> reflexive M \<and> transitive M \<Longrightarrow> w \<in> \<W> M \<Longrightarrow> M, w \<Turnstile> p\<close>
-  using soundness_AxT soundness_Ax4 by fast
-
-lemma strong_soundness\<^sub>S\<^sub>4: \<open>G \<turnstile>\<^sub>S\<^sub>4 p \<Longrightarrow> refltrans; G \<TTurnstile>\<star> p\<close>
-  using strong_soundness soundness_AxT4 .
-
-abbreviation validS4 (\<open>_ \<TTurnstile>\<^sub>S\<^sub>4 _\<close> [50, 50] 50) where
-  \<open>G \<TTurnstile>\<^sub>S\<^sub>4 p \<equiv> refltrans; G \<TTurnstile> p\<close>
-
-lemma strong_completeness\<^sub>S\<^sub>4: \<open>G \<TTurnstile>\<^sub>S\<^sub>4 p \<Longrightarrow> G \<turnstile>\<^sub>S\<^sub>4 p\<close>
-  using strong_completeness[of refltrans] reflexive\<^sub>T[of \<open>AxT \<oplus> Ax4\<close>] transitive\<^sub>K\<^sub>4[of \<open>AxT \<oplus> Ax4\<close>]
-  by blast
-
-theorem main\<^sub>S\<^sub>4: \<open>G \<TTurnstile>\<^sub>S\<^sub>4 p \<longleftrightarrow> G \<turnstile>\<^sub>S\<^sub>4 p\<close>
-  using strong_soundness\<^sub>S\<^sub>4[of G p] strong_completeness\<^sub>S\<^sub>4[of G p] by fast
-
-corollary \<open>G \<TTurnstile>\<^sub>S\<^sub>4 p \<longrightarrow> refltrans; G \<TTurnstile>\<star> p\<close>
-  using strong_soundness\<^sub>S\<^sub>4[of G p] strong_completeness\<^sub>S\<^sub>4[of G p] by fast
-
-section \<open>System S5\<close>
-
-subsection \<open>T + B + 4\<close>
-
-abbreviation SystemS5 (\<open>_ \<turnstile>\<^sub>S\<^sub>5 _\<close> [50, 50] 50) where
-  \<open>G \<turnstile>\<^sub>S\<^sub>5 p \<equiv> AxT \<oplus> AxB \<oplus> Ax4; G \<turnstile> p\<close>
-
-abbreviation AxTB4 :: \<open>'i fm \<Rightarrow> bool\<close> where
-  \<open>AxTB4 \<equiv> AxT \<oplus> AxB \<oplus> Ax4\<close>
-
-lemma soundness_AxTB4: \<open>AxTB4 p \<Longrightarrow> equivalence M \<Longrightarrow> w \<in> \<W> M \<Longrightarrow> M, w \<Turnstile> p\<close>
-  using soundness_AxT soundness_AxB soundness_Ax4 by fast
-
-lemma strong_soundness\<^sub>S\<^sub>5: \<open>G \<turnstile>\<^sub>S\<^sub>5 p \<Longrightarrow> equivalence; G \<TTurnstile>\<star> p\<close>
-  using strong_soundness soundness_AxTB4 .
-
-abbreviation validS5 (\<open>_ \<TTurnstile>\<^sub>S\<^sub>5 _\<close> [50, 50] 50) where
-  \<open>G \<TTurnstile>\<^sub>S\<^sub>5 p \<equiv> equivalence; G \<TTurnstile> p\<close>
-
-lemma strong_completeness\<^sub>S\<^sub>5: \<open>G \<TTurnstile>\<^sub>S\<^sub>5 p \<Longrightarrow> G \<turnstile>\<^sub>S\<^sub>5 p\<close>
-  using strong_completeness[of equivalence]
-    reflexive\<^sub>T[of AxTB4] symmetric\<^sub>K\<^sub>B[of AxTB4] transitive\<^sub>K\<^sub>4[of AxTB4]
-  by blast
-
-theorem main\<^sub>S\<^sub>5: \<open>G \<TTurnstile>\<^sub>S\<^sub>5 p \<longleftrightarrow> G \<turnstile>\<^sub>S\<^sub>5 p\<close>
-  using strong_soundness\<^sub>S\<^sub>5[of G p] strong_completeness\<^sub>S\<^sub>5[of G p] by fast
-
-corollary \<open>G \<TTurnstile>\<^sub>S\<^sub>5 p \<longrightarrow> equivalence; G \<TTurnstile>\<star> p\<close>
-  using strong_soundness\<^sub>S\<^sub>5[of G p] strong_completeness\<^sub>S\<^sub>5[of G p] by fast
-
-subsection \<open>T + 5\<close>
-
-abbreviation SystemS5' (\<open>_ \<turnstile>\<^sub>S\<^sub>5'' _\<close> [50, 50] 50) where
-  \<open>G \<turnstile>\<^sub>S\<^sub>5' p \<equiv> AxT \<oplus> Ax5; G \<turnstile> p\<close>
-
-abbreviation AxT5 :: \<open>'i fm \<Rightarrow> bool\<close> where
-  \<open>AxT5 \<equiv> AxT \<oplus> Ax5\<close>
-
-lemma symm_trans_Euclid: \<open>symmetric M \<Longrightarrow> transitive M \<Longrightarrow> Euclidean M\<close>
-  unfolding symmetric_def transitive_def Euclidean_def by blast
-
-lemma soundness_AxT5: \<open>AxT5 p \<Longrightarrow> equivalence M \<Longrightarrow> w \<in> \<W> M \<Longrightarrow> M, w \<Turnstile> p\<close>
-  using soundness_AxT[of p M w] soundness_Ax5[of p M w] symm_trans_Euclid by blast
-
-lemma strong_soundness\<^sub>S\<^sub>5': \<open>G \<turnstile>\<^sub>S\<^sub>5' p \<Longrightarrow> equivalence; G \<TTurnstile>\<star> p\<close>
-  using strong_soundness soundness_AxT5 .
-
-lemma refl_Euclid_equiv: \<open>reflexive M \<Longrightarrow> Euclidean M \<Longrightarrow> equivalence M\<close>
-  unfolding reflexive_def symmetric_def transitive_def Euclidean_def by metis
-
-lemma strong_completeness\<^sub>S\<^sub>5': \<open>G \<TTurnstile>\<^sub>S\<^sub>5 p \<Longrightarrow> G \<turnstile>\<^sub>S\<^sub>5' p\<close>
-  using strong_completeness[of equivalence]
-    reflexive\<^sub>T[of AxT5] Euclidean\<^sub>K\<^sub>5[of AxT5] refl_Euclid_equiv by blast
-
-theorem main\<^sub>S\<^sub>5': \<open>G \<TTurnstile>\<^sub>S\<^sub>5 p \<longleftrightarrow> G \<turnstile>\<^sub>S\<^sub>5' p\<close>
-  using strong_soundness\<^sub>S\<^sub>5'[of G p] strong_completeness\<^sub>S\<^sub>5'[of G p] by fast
-
-subsection \<open>Equivalence between systems\<close>
-
-subsubsection \<open>Axiom 5 from B and 4\<close>
-
-lemma K4_L:
-  assumes \<open>Ax4 \<le> A\<close>
-  shows \<open>A \<turnstile> L i (L i p) \<^bold>\<longrightarrow> L i p\<close>
-proof -
-  have \<open>A \<turnstile> K i (\<^bold>\<not> p) \<^bold>\<longrightarrow> K i (K i (\<^bold>\<not> p))\<close>
-    using assms by (auto intro: Ax Ax4.intros)
-  then show ?thesis
-    by (meson K_LK K_trans R1)
-qed
-
-lemma KB4_5:
-  assumes \<open>AxB \<le> A\<close> \<open>Ax4 \<le> A\<close>
-  shows \<open>A \<turnstile> L i p \<^bold>\<longrightarrow> K i (L i p)\<close>
-proof -
-  have \<open>A \<turnstile> L i p \<^bold>\<longrightarrow> K i (L i (L i p))\<close>
-    using assms by (auto intro: Ax AxB.intros)
-  moreover have \<open>A \<turnstile> L i (L i p) \<^bold>\<longrightarrow> L i p\<close>
-    using assms by (auto intro: K4_L)
-  then have \<open>A \<turnstile> K i (L i (L i p)) \<^bold>\<longrightarrow> K i (L i p)\<close>
-    using K_map by fast
-  ultimately show ?thesis
-    using K_trans R1 by metis
-qed
-
-subsubsection \<open>Axioms B and 4 from T and 5\<close>
-
-lemma T_L:
-  assumes \<open>AxT \<le> A\<close>
-  shows \<open>A \<turnstile> p \<^bold>\<longrightarrow> L i p\<close>
-proof -
-  have \<open>A \<turnstile> K i (\<^bold>\<not> p) \<^bold>\<longrightarrow> \<^bold>\<not> p\<close>
-    using assms by (auto intro: Ax AxT.intros)
-  moreover have \<open>A \<turnstile> (P \<^bold>\<longrightarrow> \<^bold>\<not> Q) \<^bold>\<longrightarrow> Q \<^bold>\<longrightarrow> \<^bold>\<not> P\<close> for P Q
-    by (auto intro: A1)
-  ultimately show ?thesis
-    by (auto intro: R1)
-qed
-
-lemma S5'_B:
-  assumes \<open>AxT \<le> A\<close> \<open>Ax5 \<le> A\<close>
-  shows \<open>A \<turnstile> p \<^bold>\<longrightarrow> K i (L i p)\<close>
-proof -
-  have \<open>A \<turnstile> L i p \<^bold>\<longrightarrow> K i (L i p)\<close>
-    using assms(2) by (auto intro: Ax Ax5.intros)
-  moreover have \<open>A \<turnstile> p \<^bold>\<longrightarrow> L i p\<close>
-    using assms(1) by (auto intro: T_L)
-  ultimately show ?thesis
-    using K_trans R1 by metis
-qed
-
-lemma K5_L:
-  assumes \<open>Ax5 \<le> A\<close>
-  shows \<open>A \<turnstile> L i (K i p) \<^bold>\<longrightarrow> K i p\<close>
-proof -
-  have \<open>A \<turnstile> L i (\<^bold>\<not> p) \<^bold>\<longrightarrow> K i (L i (\<^bold>\<not> p))\<close>
-    using assms by (auto intro: Ax Ax5.intros)
-  then have \<open>A \<turnstile> L i (\<^bold>\<not> p) \<^bold>\<longrightarrow> K i (\<^bold>\<not> K i p)\<close>
-    using K_LK by (metis K_map K_trans R1)
-  moreover have \<open>A \<turnstile> (P \<^bold>\<longrightarrow> Q) \<^bold>\<longrightarrow> \<^bold>\<not> Q \<^bold>\<longrightarrow> \<^bold>\<not> P\<close> for P Q
-    by (auto intro: A1)
-  ultimately have \<open>A \<turnstile> \<^bold>\<not> K i (\<^bold>\<not> K i p) \<^bold>\<longrightarrow> \<^bold>\<not> L i (\<^bold>\<not> p)\<close>
-    using R1 by blast
-  then have \<open>A \<turnstile> \<^bold>\<not> K i (\<^bold>\<not> K i p) \<^bold>\<longrightarrow> K i p\<close>
-    using K_L_dual R1 K_trans by metis
-  then show ?thesis
-    by blast
-qed
-
-lemma S5'_4:
-  assumes \<open>AxT \<le> A\<close> \<open>Ax5 \<le> A\<close>
-  shows \<open>A \<turnstile> K i p \<^bold>\<longrightarrow> K i (K i p)\<close>
-proof -
-  have \<open>A \<turnstile> L i (K i p) \<^bold>\<longrightarrow> K i (L i (K i p))\<close>
-    using assms(2) by (auto intro: Ax Ax5.intros)
-  moreover have \<open>A \<turnstile> K i p \<^bold>\<longrightarrow> L i (K i p)\<close>
-    using assms(1) by (auto intro: T_L)
-  ultimately have \<open>A \<turnstile> K i p \<^bold>\<longrightarrow> K i (L i (K i p))\<close>
-    using K_trans R1 by metis
-  moreover have \<open>A \<turnstile> L i (K i p) \<^bold>\<longrightarrow> K i p\<close>
-    using assms(2) K5_L by metis
-  then have \<open>A \<turnstile> K i (L i (K i p)) \<^bold>\<longrightarrow> K i (K i p)\<close>
-    using K_map by fast
-  ultimately show ?thesis
-    using R1 K_trans by metis
-qed
-
-lemma S5_S5': \<open>AxTB4 \<turnstile> p \<Longrightarrow> AxT5 \<turnstile> p\<close>
-proof (induct p rule: AK.induct)
-  case (Ax p)
-  moreover have \<open>AxT5 \<turnstile> p\<close> if \<open>AxT p\<close>
-    using that AK.Ax by metis
-  moreover have \<open>AxT5 \<turnstile> p\<close> if \<open>AxB p\<close>
-    using that S5'_B by (metis (no_types, lifting) AxB.cases predicate1I)
-  moreover have \<open>AxT5 \<turnstile> p\<close> if \<open>Ax4 p\<close>
-    using that S5'_4 by (metis (no_types, lifting) Ax4.cases predicate1I)
-  ultimately show ?case
-    by blast
-qed (auto intro: AK.intros)
-
-lemma S5'_S5: \<open>AxT5 \<turnstile> p \<Longrightarrow> AxTB4 \<turnstile> p\<close>
-proof (induct p rule: AK.induct)
-  case (Ax p)
-  moreover have \<open>AxTB4 \<turnstile> p\<close> if \<open>AxT p\<close>
-    using that AK.Ax by metis
-  moreover have \<open>AxTB4 \<turnstile> p\<close> if \<open>Ax5 p\<close>
-    using that KB4_5 by (metis (no_types, lifting) Ax5.cases predicate1I)
-  ultimately show ?case
-    by blast
-qed (auto intro: AK.intros)
-
-corollary S5_S5'_assms: \<open>G \<turnstile>\<^sub>S\<^sub>5 p \<longleftrightarrow> G \<turnstile>\<^sub>S\<^sub>5' p\<close>
-  using S5_S5' S5'_S5 by blast
 *)
 
 section \<open>Acknowledgements\<close>
