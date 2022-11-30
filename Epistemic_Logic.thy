@@ -874,6 +874,9 @@ next
     by (simp add: A1)
 qed
 
+lemma conjunct_implies_elem: \<open>p \<in> set ps \<Longrightarrow> A \<turnstile> \<^bold>\<And> ps \<^bold>\<longrightarrow> p\<close> 
+  by (metis K_imply_head R1 imply.simps(2) imply_append imply_implies_conjunct split_list)
+
 section \<open>Strong Soundness\<close>
 
 corollary soundness_imply:
@@ -1417,11 +1420,37 @@ proof -
     have \<open>set w' \<notin> reach A i (set w)\<close> 
     proof (rule ccontr)
       assume \<open>\<not> set w' \<notin> reach A i (set w)\<close>
-      from E(4) obtain k where \<open>\<not> canonical A \<phi>, set w' \<Turnstile> Ev_n g p k\<close> 
+      then have 1: \<open>set w' \<in> \<K> (canonical A \<phi>) i (set w)\<close>
+        by simp
+      from E(4) obtain k where 2: \<open>\<not> canonical A \<phi>, set w' \<Turnstile> Ev_n g p k\<close> 
         by auto
-      show False sorry
+      have \<open>canonical A \<phi>, set w \<Turnstile> Ev_n g p (k + 1)\<close> 
+        using E(3) by fastforce
+      then have \<open>canonical A \<phi>, set w \<Turnstile> K i (Ev_n g p k)\<close>
+        using \<open>i \<in> set g\<close> by simp
+      then have \<open>canonical A \<phi>, set w' \<Turnstile> Ev_n g p k\<close>
+        using 1 \<open>set w' \<in> mcss A \<phi>\<close> by simp
+      then show False 
+        using 2 by simp
     qed
-    show ?thesis sorry
+    then obtain q where q_def: \<open>K i q \<in> set w \<and> q \<notin> set w'\<close> 
+      by auto
+    then have \<open>K i q \<in> sub_C' \<phi>\<close> 
+      using E(1) by blast
+    then have \<open>K i q \<in> sub_C \<phi>\<close> 
+      by blast
+    then have \<open>q \<in> sub_C \<phi>\<close>
+      by (metis insertI2 p_in_sub_C_p sub_C.simps(6) sub_C_transitive)
+    then have \<open>\<not> consistent A (insert q (set w'))\<close>
+      using E(2) insert_is_Un maximal'_def mem_Collect_eq q_def by fastforce
+    then have \<open>A \<turnstile> q # w' \<^bold>\<leadsto> \<^bold>\<bottom>\<close> 
+      by (metis K_imply_weaken consistent_def list.simps(15))
+    then have \<open>A \<turnstile> q \<^bold>\<longrightarrow> \<^bold>\<not>(\<^bold>\<And>w')\<close>
+      by (metis imp_chain imply.simps(2) imply_implies_conjunct)
+    then have \<open>A \<turnstile> K i q \<^bold>\<longrightarrow> K i (\<^bold>\<not>(\<^bold>\<And>w'))\<close>
+      by (simp add: K_map)
+    then show ?thesis 
+      using q_def conjunct_implies_elem imp_chain by blast
   qed
   obtain \<w>' where \<open>set (map set \<w>') = WNCo\<close> 
   proof-
