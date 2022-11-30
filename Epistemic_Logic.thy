@@ -1317,79 +1317,90 @@ lemma Co_lemma:
   assumes \<open>set (map set \<w>) = WCo\<close>
   assumes \<open>\<phi>\<^sub>\<w> = disjunct (map conjunct \<w>)\<close>
   shows \<open>A \<turnstile> \<phi>\<^sub>\<w> \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close>
-proof (induct g)
-  case Nil
-  have \<open>A \<turnstile> Ev [] (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close> 
-    by (simp add: Ev_empty_group)
-  then show ?case 
-    using R1 conE1 con_imp_antecedents by blast
-next
-  case (Cons i g)
-  moreover have \<open>A \<turnstile> \<phi>\<^sub>\<w> \<^bold>\<longrightarrow> K i (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close> 
+proof -
+  (*formulas named after the tasks in the exercise*)
+  have a: \<open>i \<in> set g \<Longrightarrow> w \<in> set \<w> \<Longrightarrow> A \<turnstile> \<^bold>\<And> w \<^bold>\<longrightarrow> K i p\<close> for w i
   proof-
-    (*formulas named after the tasks in the exercise*)
-    have a: \<open>w \<in> set \<w> \<Longrightarrow> A \<turnstile> \<^bold>\<And> w \<^bold>\<longrightarrow> K i p\<close> for w
-    proof-
-      show ?thesis sorry
-    qed
-    define WNCo where \<open>WNCo \<equiv> {W \<in> mcss A \<phi>. \<not> canonical A \<phi>, W \<Turnstile> Co g p}\<close>
-    have b: \<open>w \<in> set \<w> \<Longrightarrow> set w' \<in> WNCo \<Longrightarrow> A \<turnstile> \<^bold>\<And> w \<^bold>\<longrightarrow> K i (\<^bold>\<not> (\<^bold>\<And> w'))\<close> for w' w
-      sorry
-    obtain \<w>' where \<open>set (map set \<w>') = WNCo\<close> 
-    proof-
-      have \<open>finite (mcss A \<phi>)\<close>
-        using sub_C'_finite by fast
-      then have \<open>finite WNCo\<close> 
-        unfolding WNCo_def by fastforce
-      moreover have \<open>\<forall> w' \<in> WNCo. finite w'\<close> 
-        unfolding WNCo_def
-        by (metis (mono_tags, lifting) mem_Collect_eq rev_finite_subset sub_C'_finite)
-      ultimately show \<open>(\<And>\<w>'. set (map set \<w>') = WNCo \<Longrightarrow> thesis) \<Longrightarrow> thesis\<close>
-        using list_of_lists_if_finite_set_of_sets by blast
-    qed
-    have c: \<open>w \<in> set \<w> \<Longrightarrow> A \<turnstile> \<^bold>\<And> w \<^bold>\<longrightarrow> K i (p \<^bold>\<and> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>'))\<close> for w sorry
-    have d1: \<open>w \<in> set \<w> \<Longrightarrow> A \<turnstile> \<phi>\<^sub>\<w> \<^bold>\<longrightarrow> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>')\<close> for w sorry (*not actually used in the proof it seems like*)
-    have d2: \<open>w \<in> set \<w> \<Longrightarrow> A \<turnstile> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>') \<^bold>\<longrightarrow> \<phi>\<^sub>\<w>\<close> for w sorry
-    have e: \<open>w \<in> set \<w> \<Longrightarrow> A \<turnstile> \<^bold>\<And> w \<^bold>\<longrightarrow> K i (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close> for w 
-    proof- 
-      assume \<open>w \<in> set \<w>\<close>
-      then have \<open>A \<turnstile>  K i (p \<^bold>\<and> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>')) \<^bold>\<longrightarrow> K i (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close>
-        using d2 R1 by (metis K_map conE1 con_imp2 con_imp_antecedents)
-      then show ?thesis
-        using \<open>w \<in> set \<w>\<close> c d2 imp_chain by fast
-    qed
-    consider \<open>\<w> = []\<close> | \<open>\<exists> w. w \<in> set \<w>\<close>
-      by fastforce
-    then show f: ?thesis 
-    proof -
-      have \<open>\<forall> p \<in> set ps. A \<turnstile> p \<^bold>\<longrightarrow> q \<Longrightarrow> A \<turnstile> \<^bold>\<Or> ps \<^bold>\<longrightarrow> q\<close> for ps q
-      proof (induct ps)
-        case Nil
-        then show ?case 
-          by (simp add: A1)
-      next
-        case (Cons p ps)
-        then have \<open>A \<turnstile> \<^bold>\<Or> ps \<^bold>\<longrightarrow> q\<close>
-          by simp
-        moreover have \<open>A \<turnstile> p \<^bold>\<longrightarrow> q\<close> 
-          using Cons by simp
-        moreover have \<open>A \<turnstile> (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> (\<^bold>\<Or> ps \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> p \<^bold>\<or> (\<^bold>\<Or> ps) \<^bold>\<longrightarrow> q\<close>
-          using A1 by force
-        ultimately have \<open>A \<turnstile> p \<^bold>\<or> (\<^bold>\<Or> ps) \<^bold>\<longrightarrow> q\<close> 
-          using R1 by blast
-        then show ?case 
-          by simp
-      qed
-      moreover have \<open>\<forall> \<phi>\<^sub>w \<in> set (map conjunct \<w>). A \<turnstile> \<phi>\<^sub>w \<^bold>\<longrightarrow> K i (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close> 
-        using e by simp
-      ultimately show ?thesis
-        using assms(3) by simp
-    qed
+    assume \<open>w \<in> set \<w>\<close>
+    then have \<open>set w \<in> WCo\<close>
+      using \<open>set (map set \<w>) = WCo\<close> by auto
+    then have \<open>set w \<in> mcss A \<phi> \<and> canonical A \<phi>, set w \<Turnstile> Co g p\<close>
+      unfolding WCo_def sorry
+    show ?thesis sorry
   qed
-  moreover have \<open>A \<turnstile> K i (p \<^bold>\<and> \<phi>\<^sub>\<w>) \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> \<phi>\<^sub>\<w>) \<^bold>\<longrightarrow> Ev (i # g) (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close>
-    by (simp add: Ev_add_i)
-  ultimately show ?case
-    by (meson con_imp2 con_imp_antecedents imp_chain)
+  define WNCo where \<open>WNCo \<equiv> {W \<in> mcss A \<phi>. \<not> canonical A \<phi>, W \<Turnstile> Co g p}\<close>
+  have b: \<open>i \<in> set g \<Longrightarrow> w \<in> set \<w> \<Longrightarrow> set w' \<in> WNCo \<Longrightarrow> A \<turnstile> \<^bold>\<And> w \<^bold>\<longrightarrow> K i (\<^bold>\<not> (\<^bold>\<And> w'))\<close> for w' w i
+    sorry
+  obtain \<w>' where \<open>set (map set \<w>') = WNCo\<close> 
+  proof-
+    have \<open>finite (mcss A \<phi>)\<close>
+      using sub_C'_finite by fast
+    then have \<open>finite WNCo\<close> 
+      unfolding WNCo_def by fastforce
+    moreover have \<open>\<forall> w' \<in> WNCo. finite w'\<close> 
+      unfolding WNCo_def
+      by (metis (mono_tags, lifting) mem_Collect_eq rev_finite_subset sub_C'_finite)
+    ultimately show \<open>(\<And>\<w>'. set (map set \<w>') = WNCo \<Longrightarrow> thesis) \<Longrightarrow> thesis\<close>
+      using list_of_lists_if_finite_set_of_sets by blast
+  qed
+  have c: \<open>i \<in> set g \<Longrightarrow> w \<in> set \<w> \<Longrightarrow> A \<turnstile> \<^bold>\<And> w \<^bold>\<longrightarrow> K i (p \<^bold>\<and> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>'))\<close> for w i sorry
+  have d1: \<open>i \<in> set g \<Longrightarrow> w \<in> set \<w> \<Longrightarrow> A \<turnstile> \<phi>\<^sub>\<w> \<^bold>\<longrightarrow> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>')\<close> for w i sorry (*not actually used in the proof it seems like*)
+  have d2: \<open>i \<in> set g \<Longrightarrow> w \<in> set \<w> \<Longrightarrow> A \<turnstile> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>') \<^bold>\<longrightarrow> \<phi>\<^sub>\<w>\<close> for w i sorry
+  have e: \<open>i \<in> set g \<Longrightarrow> w \<in> set \<w> \<Longrightarrow> A \<turnstile> \<^bold>\<And> w \<^bold>\<longrightarrow> K i (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close> for w i 
+  proof- 
+    assume \<open>i \<in> set g\<close>
+    moreover assume \<open>w \<in> set \<w>\<close>
+    ultimately have \<open>A \<turnstile>  K i (p \<^bold>\<and> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>')) \<^bold>\<longrightarrow> K i (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close>
+      using d2 R1 by (metis K_map conE1 con_imp2 con_imp_antecedents)
+    then show ?thesis
+      using \<open>i \<in> set g\<close> \<open>w \<in> set \<w>\<close> c d2 imp_chain by fast
+  qed
+  then show f: ?thesis 
+  proof -
+    have *:\<open>\<forall> p \<in> set ps. A \<turnstile> p \<^bold>\<longrightarrow> q \<Longrightarrow> A \<turnstile> \<^bold>\<Or> ps \<^bold>\<longrightarrow> q\<close> for ps q
+    proof (induct ps)
+      case Nil
+      then show ?case 
+        by (simp add: A1)
+    next
+      case (Cons p ps)
+      then have \<open>A \<turnstile> \<^bold>\<Or> ps \<^bold>\<longrightarrow> q\<close>
+        by simp
+      moreover have \<open>A \<turnstile> p \<^bold>\<longrightarrow> q\<close> 
+        using Cons by simp
+      moreover have \<open>A \<turnstile> (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> (\<^bold>\<Or> ps \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> p \<^bold>\<or> (\<^bold>\<Or> ps) \<^bold>\<longrightarrow> q\<close>
+        using A1 by force
+      ultimately have \<open>A \<turnstile> p \<^bold>\<or> (\<^bold>\<Or> ps) \<^bold>\<longrightarrow> q\<close> 
+        using R1 by blast
+      then show ?case 
+        by simp
+    qed
+    have \<open>i \<in> set g \<Longrightarrow> \<forall> \<phi>\<^sub>w \<in> set (map conjunct \<w>). A \<turnstile> \<phi>\<^sub>w \<^bold>\<longrightarrow> K i (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close> for i
+      using e by simp
+    then have \<open>\<forall> \<phi>\<^sub>w \<in> set (map conjunct \<w>). A \<turnstile> \<phi>\<^sub>w \<^bold>\<longrightarrow> unfold_Ev g (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close> 
+    proof (induct g)
+      case Nil
+      then show ?case 
+        by (metis conE2 con_imp_antecedents empty_fold)
+    next
+      case (Cons i g)
+      show ?case 
+      proof
+        fix \<phi>\<^sub>w 
+        assume \<open>\<phi>\<^sub>w\<in>set (map conjunct \<w>)\<close>
+        then have \<open>A \<turnstile> \<phi>\<^sub>w \<^bold>\<longrightarrow> unfold_Ev g (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close>
+          using Cons by auto
+        moreover have \<open>A \<turnstile> \<phi>\<^sub>w \<^bold>\<longrightarrow> K i (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close>
+          using Cons.prems \<open>\<phi>\<^sub>w \<in> set (map conjunct \<w>)\<close> by auto
+        ultimately  show \<open>A \<turnstile> \<phi>\<^sub>w \<^bold>\<longrightarrow> unfold_Ev (i # g) (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close>  
+          by (simp add: con_imp2)
+      qed
+    qed
+    then have \<open>\<forall> \<phi>\<^sub>w \<in> set (map conjunct \<w>). A \<turnstile> \<phi>\<^sub>w \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close> 
+      using C1b imp_chain by blast
+    then show ?thesis
+      using assms(3) * by simp
+  qed
 qed
 
 
