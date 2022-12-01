@@ -894,6 +894,36 @@ proof-
     using R1 by auto
 qed
 
+lemma extract_neg_conjunct: \<open>A \<turnstile> (\<^bold>\<And> (map (Neg) ps)) \<^bold>\<longrightarrow> \<^bold>\<not>(\<^bold>\<Or> ps)\<close>
+proof (induct ps)
+  case Nil
+  then show ?case 
+    by (metis comp.simps(1) comp_imp2 conjunct.simps(1) disjunct.simps(1) list.simps(8))
+next
+  case (Cons p ps)
+  then have \<open>A \<turnstile> \<^bold>\<not>p \<^bold>\<and> \<^bold>\<And> map Neg ps \<^bold>\<longrightarrow> \<^bold>\<not>p \<^bold>\<and> \<^bold>\<not> (\<^bold>\<Or> ps)\<close>
+    by (metis comp.simps(1) comp_imp2 con_imp)
+  moreover have \<open>A \<turnstile> \<^bold>\<not>p \<^bold>\<and> \<^bold>\<not> (\<^bold>\<Or> ps) \<^bold>\<longrightarrow> \<^bold>\<not> (p \<^bold>\<or> \<^bold>\<Or> ps)\<close>
+    by (simp add: A1)
+  ultimately show ?case 
+    using imp_chain by auto
+qed
+
+lemma disjunct_split: \<open>A \<turnstile> \<^bold>\<Or> (ps @ qs) \<^bold>\<longrightarrow> (\<^bold>\<Or> (ps)) \<^bold>\<or> (\<^bold>\<Or> (qs))\<close>
+proof (induct ps)
+  case Nil
+  then show ?case 
+    by (simp add: A1)
+next
+  case (Cons p ps)
+  moreover have \<open>A \<turnstile> (\<^bold>\<Or> ps @ qs \<^bold>\<longrightarrow> (\<^bold>\<Or> ps) \<^bold>\<or> \<^bold>\<Or> qs) \<^bold>\<longrightarrow> p \<^bold>\<or> \<^bold>\<Or> ps @ qs \<^bold>\<longrightarrow> p \<^bold>\<or> ((\<^bold>\<Or> ps) \<^bold>\<or> \<^bold>\<Or> qs)\<close>
+    using A1 by force
+  ultimately have \<open>A \<turnstile> p \<^bold>\<or> \<^bold>\<Or> ps @ qs \<^bold>\<longrightarrow> p \<^bold>\<or> ((\<^bold>\<Or> ps) \<^bold>\<or> \<^bold>\<Or> qs)\<close>
+    using R1 by auto
+  then show ?case 
+    by (smt (z3) A1 append_Cons disjunct.simps(2) eval.simps(3) eval.simps(5) imp_chain)
+qed
+
 section \<open>Strong Soundness\<close>
 
 corollary soundness_imply:
@@ -1386,9 +1416,6 @@ proof-
     using \<open>K i p \<in> sub_C' \<phi>\<close> consequent_in_maximal' prems(1) by blast
 qed
 
-lemma extract_neg_conjunct: \<open>A \<turnstile> (\<^bold>\<And> (map (Neg) ps)) \<^bold>\<longrightarrow> \<^bold>\<not>(\<^bold>\<Or> ps)\<close>sorry
-
-
 (*exercise 3.28*)
 lemma Co_lemma:
   fixes A \<phi> g 
@@ -1511,7 +1538,14 @@ proof -
   (*have d1: \<open>i \<in> set g \<Longrightarrow> w \<in> set \<w> \<Longrightarrow> A \<turnstile> \<phi>\<^sub>\<w> \<^bold>\<longrightarrow> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>')\<close> for w i not actually used in the proof it seems like*)
   have d_hint: \<open>A \<turnstile> (\<^bold>\<Or> (map conjunct \<w>)) \<^bold>\<or> (\<^bold>\<Or> (map conjunct \<w>'))\<close>
   proof-
-    show ?thesis sorry
+    have \<open>(set (map set \<w>) \<union> set (map set \<w>')) = mcss A \<phi>\<close>
+      using \<open>set (map set \<w>) = WCo\<close> \<open>set (map set \<w>') = WNCo\<close> unfolding WCo_def WNCo_def 
+      using Collect_cong Collect_disj_eq mem_Collect_eq by auto
+    moreover have \<open>set (map set W) = mcss A \<phi> \<Longrightarrow> A \<turnstile> \<^bold>\<Or> map conjunct W\<close> for W sorry
+    ultimately have \<open>A \<turnstile> \<^bold>\<Or> map conjunct (\<w> @ \<w>')\<close>
+      by (metis map_append set_append)
+    then show ?thesis 
+      using disjunct_split by (metis R1 map_append)
   qed
   have d: \<open>A \<turnstile> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>') \<^bold>\<longrightarrow> \<phi>\<^sub>\<w>\<close>
   proof-
@@ -1853,9 +1887,10 @@ next
   qed
 next
   case (K i p)
-  have \<open>p \<in> sub_C' \<phi>\<close> 
-    using \<open>K i p \<in> sub_C' \<phi>\<close>
-    by (smt (verit) Un_iff fm.distinct(53) image_iff insertCI p_in_sub_C_p sub_C.simps(6) sub_C_transitive)
+  have \<open>K i p \<in> sub_C \<phi>\<close>
+    using K.prems(1) Un_iff fm.distinct(53) image_iff by auto
+  then have \<open>p \<in> sub_C' \<phi>\<close> 
+    by (metis UnI1 insertI2 p_in_sub_C_p sub_C.simps(6) sub_C_transitive)
   then have \<open>\<And> V. V \<in> mcss A \<phi> \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> p\<close>
     using K.hyps by blast
   moreover have \<open>V \<in> mcss A \<phi>\<close> 
