@@ -1416,6 +1416,12 @@ proof-
     using \<open>K i p \<in> sub_C' \<phi>\<close> consequent_in_maximal' prems(1) by blast
 qed
 
+lemma forall_implies_conjunct: \<open>\<forall> p \<in> set ps. eval g h p \<Longrightarrow> eval g h (\<^bold>\<And> ps)\<close>
+  by (induct ps) auto
+
+lemma exists_implies_disjunct: \<open>\<exists> p \<in> set ps. eval g h p \<Longrightarrow> eval g h (\<^bold>\<Or> ps)\<close>
+  by (induct ps) auto
+
 (*exercise 3.28*)
 lemma Co_lemma:
   fixes A \<phi> g 
@@ -1424,6 +1430,7 @@ lemma Co_lemma:
   assumes \<open>Co g p \<in> sub_C' \<phi>\<close>
   assumes \<open>set (map set \<w>) = WCo\<close>
   assumes \<open>\<phi>\<^sub>\<w> = disjunct (map conjunct \<w>)\<close>
+  assumes \<open>V \<in> mcss A \<phi>\<close>
   assumes hyp: \<open>\<And> V. V \<in> mcss A \<phi> \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> p\<close>
   shows \<open>A \<turnstile> \<phi>\<^sub>\<w> \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close>
 proof -
@@ -1541,7 +1548,62 @@ proof -
     have \<open>(set (map set \<w>) \<union> set (map set \<w>')) = mcss A \<phi>\<close>
       using \<open>set (map set \<w>) = WCo\<close> \<open>set (map set \<w>') = WNCo\<close> unfolding WCo_def WNCo_def 
       using Collect_cong Collect_disj_eq mem_Collect_eq by auto
-    moreover have \<open>set (map set W) = mcss A \<phi> \<Longrightarrow> A \<turnstile> \<^bold>\<Or> map conjunct W\<close> for W sorry
+    moreover have \<open>set (map set W) = mcss A \<phi> \<Longrightarrow> A \<turnstile> \<^bold>\<Or> map conjunct W\<close> for W 
+    proof (rule ccontr)
+      assume \<open>set (map set W) = mcss A \<phi>\<close> \<open>\<not>A \<turnstile> \<^bold>\<Or> map conjunct W\<close>
+      then have \<open>\<not>A \<turnstile> [\<^bold>\<not>(\<^bold>\<Or> map conjunct W)] \<^bold>\<leadsto> \<^bold>\<bottom>\<close>
+        by (metis K_Boole imply.simps(1))
+      then have \<open>consistent A {\<^bold>\<not>(\<^bold>\<Or> map conjunct W)}\<close>
+        unfolding consistent_def by (metis K_imply_weaken list.simps(15) set_empty)
+      then have \<open>consistent A {map conjunct W}\<close> (*fucking A*)
+      show False sorry
+    qed
+
+    proof -
+      have \<open>\<exists> w \<in> mcss A \<phi>. \<forall> p \<in> w. eval f h p\<close> for f h  (*not actually true I think*)
+      proof-
+        have \<open>\<forall> p \<in> sub_C' \<phi>. comp p \<in> sub_C' \<phi>\<close> 
+          using comp_in_sub_C by blast
+        have \<open>eval f h p \<longleftrightarrow> \<not>eval f h (comp p)\<close> for p
+        proof (cases p)
+          case (Imp q r)
+          then show ?thesis 
+            by (cases r) auto
+        qed auto
+        obtain w where w_def: \<open>w = {q \<in> sub_C' \<phi>. eval f h q}\<close>
+          by simp
+        then have \<open>finite w\<close>
+          using sub_C'_finite by fastforce
+        have \<open>finite v \<Longrightarrow> v \<subseteq> w \<Longrightarrow> consistent A v\<close> for v
+        proof (induct v rule: finite.induct)
+          case emptyI
+          from \<open>V \<in> mcss A \<phi>\<close> have \<open>consistent A V\<close> 
+            by simp
+          then show ?case 
+            unfolding consistent_def by blast
+        next
+          case (insertI v q)
+          then have \<open>consistent A v\<close> 
+            by simp
+          from insertI have \<open>q \<in> sub_C' \<phi> \<and> eval f h q\<close>
+            using w_def by simp
+
+          then show ?case sorry
+        qed
+        show ?thesis sorry
+      qed
+      moreover assume \<open>set (map set W) = mcss A \<phi>\<close>
+      ultimately have \<open>\<exists> w \<in> set (map set W). \<forall> p \<in> w. eval f h p\<close> for f h 
+        by simp
+      then have \<open>\<exists> w \<in> set W. \<forall> p \<in> set w. eval f h p\<close> for f h 
+        by simp
+      then have \<open>\<exists> w \<in> set W. eval f h (\<^bold>\<And> w)\<close> for f h
+        using forall_implies_conjunct by blast
+      then have \<open>\<exists> w \<in> set (map conjunct W). eval f h w\<close> for f h 
+        by simp
+      then show ?thesis 
+        using A1 exists_implies_disjunct by blast
+    qed
     ultimately have \<open>A \<turnstile> \<^bold>\<Or> map conjunct (\<w> @ \<w>')\<close>
       by (metis map_append set_append)
     then show ?thesis 
@@ -2012,8 +2074,10 @@ next
       using Co.hyps \<open>p \<in> sub_C' \<phi>\<close> by blast
     moreover have \<open>Co g p \<in> sub_C' \<phi>\<close> 
       using Co.prems(1) by auto
+    moreover have \<open>V \<in> mcss A \<phi>\<close> 
+      using Co.prems(2) by auto
     ultimately have \<open>A \<turnstile> \<phi>\<^sub>\<w> \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> \<phi>\<^sub>\<w>)\<close>
-      using Co_lemma[where g = g and p = p and \<phi> = \<phi> and \<w> = \<w> and \<phi>\<^sub>\<w> = \<phi>\<^sub>\<w> and A = A]  by blast
+      using Co_lemma[where g = g and p = p and \<phi> = \<phi> and \<w> = \<w> and \<phi>\<^sub>\<w> = \<phi>\<^sub>\<w> and V = V and A = A] by blast
     then have *:\<open>A \<turnstile> \<phi>\<^sub>\<w> \<^bold>\<longrightarrow> Co g p\<close>
       by (simp add: RC1)
 
