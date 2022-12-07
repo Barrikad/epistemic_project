@@ -1542,72 +1542,50 @@ proof -
     then show ?thesis
       using a \<open>i \<in> set g\<close> \<open>w \<in> set \<w>\<close> conjunction_in_K by fast
   qed
-  (*have d1: \<open>i \<in> set g \<Longrightarrow> w \<in> set \<w> \<Longrightarrow> A \<turnstile> \<phi>\<^sub>\<w> \<^bold>\<longrightarrow> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>')\<close> for w i not actually used in the proof it seems like*)
   have d_hint: \<open>A \<turnstile> (\<^bold>\<Or> (map conjunct \<w>)) \<^bold>\<or> (\<^bold>\<Or> (map conjunct \<w>'))\<close>
   proof-
     have \<open>(set (map set \<w>) \<union> set (map set \<w>')) = mcss A \<phi>\<close>
       using \<open>set (map set \<w>) = WCo\<close> \<open>set (map set \<w>') = WNCo\<close> unfolding WCo_def WNCo_def 
       using Collect_cong Collect_disj_eq mem_Collect_eq by auto
+    then have \<open>set (map set (\<w> @ \<w>')) = mcss A \<phi>\<close> 
+      by simp
     moreover have \<open>set (map set W) = mcss A \<phi> \<Longrightarrow> A \<turnstile> \<^bold>\<Or> map conjunct W\<close> for W 
     proof (rule ccontr)
-      assume \<open>set (map set W) = mcss A \<phi>\<close> \<open>\<not>A \<turnstile> \<^bold>\<Or> map conjunct W\<close>
+      assume a: \<open>set (map set W) = mcss A \<phi>\<close> \<open>\<not>A \<turnstile> \<^bold>\<Or> map conjunct W\<close>
       then have \<open>\<not>A \<turnstile> [\<^bold>\<not>(\<^bold>\<Or> map conjunct W)] \<^bold>\<leadsto> \<^bold>\<bottom>\<close>
         by (metis K_Boole imply.simps(1))
       then have \<open>consistent A {\<^bold>\<not>(\<^bold>\<Or> map conjunct W)}\<close>
         unfolding consistent_def by (metis K_imply_weaken list.simps(15) set_empty)
-      then have \<open>consistent A {map conjunct W}\<close> (*fucking A*)
-      show False sorry
-    qed
-
-    proof -
-      have \<open>\<exists> w \<in> mcss A \<phi>. \<forall> p \<in> w. eval f h p\<close> for f h  (*not actually true I think*)
+      then have \<open>consistent A {\<^bold>\<And> map (\<lambda> w. \<^bold>\<not>conjunct w) W}\<close> sorry
+      then have \<open>consistent A (set (map (\<lambda> w. \<^bold>\<not>conjunct w) W))\<close> sorry
+      then have \<open>\<exists> w'. consistent A w' \<and> (\<forall> w \<in> set W. \<exists> p \<in> set w. \<^bold>\<not>p \<in> w')\<close> sorry
+      then obtain w' where w'_def: 
+        \<open>consistent A w'\<close> \<open>\<forall> w \<in> set W. \<exists> p \<in> set w. comp p \<in> w'\<close> \<open>w' \<subseteq> sub_C' \<phi>\<close>sorry
+      then obtain mw' where mw'_def: \<open>consistent A mw'\<close> \<open>maximal' A \<phi> mw'\<close> \<open>w' \<subseteq> mw'\<close> \<open>mw' \<subseteq> sub_C' \<phi>\<close>
+        using maximal_extension' by metis
+      moreover have \<open>mw' \<notin> mcss A \<phi>\<close> 
       proof-
-        have \<open>\<forall> p \<in> sub_C' \<phi>. comp p \<in> sub_C' \<phi>\<close> 
-          using comp_in_sub_C by blast
-        have \<open>eval f h p \<longleftrightarrow> \<not>eval f h (comp p)\<close> for p
-        proof (cases p)
-          case (Imp q r)
-          then show ?thesis 
-            by (cases r) auto
-        qed auto
-        obtain w where w_def: \<open>w = {q \<in> sub_C' \<phi>. eval f h q}\<close>
-          by simp
-        then have \<open>finite w\<close>
-          using sub_C'_finite by fastforce
-        have \<open>finite v \<Longrightarrow> v \<subseteq> w \<Longrightarrow> consistent A v\<close> for v
-        proof (induct v rule: finite.induct)
-          case emptyI
-          from \<open>V \<in> mcss A \<phi>\<close> have \<open>consistent A V\<close> 
-            by simp
-          then show ?case 
-            unfolding consistent_def by blast
-        next
-          case (insertI v q)
-          then have \<open>consistent A v\<close> 
-            by simp
-          from insertI have \<open>q \<in> sub_C' \<phi> \<and> eval f h q\<close>
-            using w_def by simp
-
-          then show ?case sorry
-        qed
-        show ?thesis sorry
+        have \<open>\<forall> w. w \<in> mcss A \<phi> \<longrightarrow> w \<in> set (map set W)\<close>
+          using a(1) by simp
+        then have \<open>\<forall> w \<in> mcss A \<phi>. \<exists> ps \<in> set W. set ps = w\<close> 
+          by (metis (no_types, lifting) image_iff list.set_map)
+        then have \<open>\<forall> w \<in> mcss A \<phi>. \<exists> p \<in> w. comp p \<in> mw'\<close> 
+          using \<open>w' \<subseteq> mw'\<close> w'_def(2) by (metis a(1) subset_iff)
+        moreover have \<open>\<forall> p. A \<turnstile> [p,comp p] \<^bold>\<leadsto> \<^bold>\<bottom>\<close>
+          by (simp add: comp_imp1)
+        ultimately have \<open>\<forall> w \<in> mcss A \<phi>. w \<noteq> mw'\<close>
+          unfolding consistent_def 
+          by (smt (verit, best) exactly_one_in_maximal' mw'_def(1) mw'_def(2) mw'_def(4) subset_iff)
+        then show ?thesis 
+          by blast
       qed
-      moreover assume \<open>set (map set W) = mcss A \<phi>\<close>
-      ultimately have \<open>\<exists> w \<in> set (map set W). \<forall> p \<in> w. eval f h p\<close> for f h 
+      ultimately show False
         by simp
-      then have \<open>\<exists> w \<in> set W. \<forall> p \<in> set w. eval f h p\<close> for f h 
-        by simp
-      then have \<open>\<exists> w \<in> set W. eval f h (\<^bold>\<And> w)\<close> for f h
-        using forall_implies_conjunct by blast
-      then have \<open>\<exists> w \<in> set (map conjunct W). eval f h w\<close> for f h 
-        by simp
-      then show ?thesis 
-        using A1 exists_implies_disjunct by blast
     qed
-    ultimately have \<open>A \<turnstile> \<^bold>\<Or> map conjunct (\<w> @ \<w>')\<close>
-      by (metis map_append set_append)
+    ultimately have \<open>A \<turnstile> \<^bold>\<Or> map conjunct (\<w> @ \<w>')\<close> 
+      by presburger
     then show ?thesis 
-      using disjunct_split by (metis R1 map_append)
+        by (metis R1 disjunct_split map_append)
   qed
   have d: \<open>A \<turnstile> (\<^bold>\<And> map (\<lambda> w'. \<^bold>\<not> (\<^bold>\<And> w')) \<w>') \<^bold>\<longrightarrow> \<phi>\<^sub>\<w>\<close>
   proof-
