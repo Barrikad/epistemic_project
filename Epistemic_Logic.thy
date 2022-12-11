@@ -924,6 +924,114 @@ next
     by (smt (z3) A1 append_Cons disjunct.simps(2) eval.simps(3) eval.simps(5) imp_chain)
 qed
 
+lemma add_assm_and_concl: \<open>A \<turnstile> p \<^bold>\<longrightarrow> q \<Longrightarrow> A \<turnstile> ps \<^bold>\<leadsto> \<^bold>\<And>qs \<Longrightarrow> A \<turnstile> (p # ps) \<^bold>\<leadsto> \<^bold>\<And>(q # qs)\<close>
+proof-
+  assume 1:\<open>A \<turnstile> p \<^bold>\<longrightarrow> q\<close>
+  assume 2:\<open>A \<turnstile> ps \<^bold>\<leadsto> \<^bold>\<And>qs\<close>
+  from 1 have \<open>A \<turnstile> \<^bold>\<And>qs \<^bold>\<longrightarrow> p \<^bold>\<longrightarrow> q \<^bold>\<and> \<^bold>\<And>qs\<close> 
+    by (meson conE1 conE2 con_imp2 con_imp_antecedents imp_chain)
+  then have \<open>A \<turnstile> ps \<^bold>\<leadsto> (p \<^bold>\<longrightarrow> q \<^bold>\<and> \<^bold>\<And>qs)\<close>
+    using 2 imply_chain by auto
+  then show ?thesis 
+    by (metis K_imply_Cons K_imply_head K_right_mp conjunct.simps(2))
+qed
+
+lemma de_morgan_conjunct: \<open>A \<turnstile> \<^bold>\<not>(\<^bold>\<Or>ps) \<^bold>\<longrightarrow> \<^bold>\<And> map Neg ps\<close> 
+proof (induct ps)
+  case Nil
+  then show ?case 
+    by (metis conjunct.simps(1) disjunct.simps(1) extract_neg_conjunct list.simps(8))
+next
+  case (Cons p ps)
+  moreover have \<open>A \<turnstile> (\<^bold>\<not> (\<^bold>\<Or> ps) \<^bold>\<longrightarrow> \<^bold>\<And> map Neg ps) \<^bold>\<longrightarrow> (\<^bold>\<not> (p \<^bold>\<or> \<^bold>\<Or> ps) \<^bold>\<longrightarrow> (\<^bold>\<not>p \<^bold>\<and> \<^bold>\<And> map Neg ps))\<close>
+    using A1 by force
+  ultimately show ?case 
+    using R1 by auto
+qed 
+
+lemma R1_leads_to: \<open>\<forall> p \<in> set ps. A \<turnstile> p \<Longrightarrow> A \<turnstile> ps \<^bold>\<leadsto> q \<Longrightarrow> A \<turnstile> q\<close> 
+  using R1 by (induct ps) auto
+
+lemma leads_to_evalI: \<open>((\<forall> p \<in> set ps. eval g h p) \<Longrightarrow> eval g h w) \<Longrightarrow> eval g h (ps \<^bold>\<leadsto> w)\<close> 
+  by (induct ps) auto
+
+lemma disjunct_evalI: \<open>\<exists> p \<in> set ps. eval g h p \<Longrightarrow> eval g h (\<^bold>\<Or>ps)\<close>
+  by (induct ps) auto
+
+lemma disjunct_evalE: \<open>eval g h (\<^bold>\<Or>ps) \<Longrightarrow> \<exists> p \<in> set ps. eval g h p\<close>
+  by (induct ps) auto
+
+lemma conjunct_evalI: \<open>\<forall> p \<in> set ps. eval g h p \<Longrightarrow> eval g h (\<^bold>\<And>ps)\<close>
+  by (induct ps) auto
+
+lemma conjunct_evalE: \<open>eval g h (\<^bold>\<And>ps) \<Longrightarrow> \<forall> p \<in> set ps. eval g h p\<close>
+  by (induct ps) auto
+
+lemma combine_disjunct: 
+  assumes \<open>\<forall> w'. (\<forall> w \<in> set W. \<exists> p \<in> set w. p \<in> set w') \<longrightarrow> A \<turnstile> \<^bold>\<Or>w'\<close> 
+  shows \<open>A \<turnstile> \<^bold>\<Or> (map conjunct W)\<close> 
+proof-
+  let ?U = \<open>\<Union> (set (map set W))\<close>
+  let \<open>?P\<close> = \<open>\<lambda> w'. (\<forall> w \<in> set W. \<exists> p \<in> set w. p \<in> w')\<close>
+  have \<open>finite {w'. ?P w' \<and> w' \<subseteq> ?U}\<close> \<open>\<forall> w' \<in> {w'. ?P w' \<and> w' \<subseteq> ?U}. finite w'\<close>
+    using finite_subset by fastforce+
+  then obtain W' where W'_def: \<open>set (map set W') = {w'. ?P w' \<and> w' \<subseteq> ?U}\<close>
+    by (meson list_of_lists_if_finite_set_of_sets)
+  have \<open>\<forall> p \<in> set W'. A \<turnstile> \<^bold>\<Or>p\<close>
+  proof
+    fix p
+    assume \<open>p \<in> set W'\<close>
+    then have \<open>?P (set p)\<close>
+      using W'_def by auto
+    then show \<open>A \<turnstile> \<^bold>\<Or>p\<close>
+      using assms by simp
+  qed
+  then have \<open>\<forall> p \<in> set (map disjunct W'). A \<turnstile> p\<close> 
+    by simp
+  moreover have \<open>A \<turnstile> map disjunct W' \<^bold>\<leadsto> \<^bold>\<Or> (map conjunct W)\<close>
+  proof (rule A1,rule,rule,rule leads_to_evalI, rule ccontr)
+    fix g h
+    assume a1:\<open>\<forall>p\<in>set (map disjunct W'). eval g h p\<close>
+    assume \<open>\<not>eval g h (\<^bold>\<Or> map conjunct W)\<close>
+    then have \<open>\<forall> p \<in> set (map conjunct W). \<not>eval g h p\<close>
+      using disjunct_evalI by blast
+    then have \<open>\<forall> w \<in> set W. \<exists> p \<in> set w. \<not>eval g h p\<close>
+      using conjunct_evalI by fastforce
+    then have \<open>\<exists> w'. (\<forall> p \<in> set w'. \<not>eval g h p) \<and> ?P (set w') \<and> set w' \<subseteq> ?U\<close>
+    proof (induct W)
+      case Nil
+      then show ?case
+        by simp
+    next
+      case (Cons w W)
+      then obtain w' where 
+        \<open>(\<forall>p\<in>set w'. \<not> eval g h p) \<and> (\<forall>w\<in>set W. \<exists>p\<in>set w. p \<in> set w') \<and> set w' \<subseteq> \<Union> (set (map set W))\<close> 
+        by auto
+      moreover obtain p where \<open>p \<in> set w \<and> \<not>eval g h p\<close>
+        using Cons by auto
+      ultimately have \<open>
+        (\<forall>p\<in>set (p # w'). \<not> eval g h p) \<and> 
+        (\<forall>w\<in>set (w # W). \<exists> p'\<in>set w. p' \<in> set (p # w')) \<and> 
+        set (p # w') \<subseteq> \<Union> (set (map set (w # W)))\<close> 
+        by auto 
+      then show ?case 
+        by fast
+    qed
+    then obtain w' where w'_def: \<open>(\<forall> p \<in> set w'. \<not>eval g h p)\<close> \<open>?P (set w') \<and> set w' \<subseteq> ?U\<close>
+      by auto
+    then have \<open>set w' \<in> {w'. ?P w' \<and> w' \<subseteq> ?U}\<close> 
+      by simp
+    then have \<open>\<exists> w'' \<in> set W'. set w' = set w''\<close>
+      using W'_def image_iff list.set_map by fastforce
+    then have \<open>\<exists> w'' \<in> set W'. \<not>eval g h (\<^bold>\<Or>w'')\<close> 
+      by (metis disjunct_evalE w'_def(1))
+    then show \<open>False\<close> 
+      using a1 by simp
+  qed
+  ultimately show ?thesis 
+    using R1_leads_to by fast
+qed
+
 section \<open>Strong Soundness\<close>
 
 corollary soundness_imply:
@@ -1416,11 +1524,55 @@ proof-
     using \<open>K i p \<in> sub_C' \<phi>\<close> consequent_in_maximal' prems(1) by blast
 qed
 
-lemma forall_implies_conjunct: \<open>\<forall> p \<in> set ps. eval g h p \<Longrightarrow> eval g h (\<^bold>\<And> ps)\<close>
-  by (induct ps) auto
+lemma consistent_implies: \<open>\<forall> q \<in> w'. \<exists> p \<in> w.  A \<turnstile> p \<^bold>\<longrightarrow> q \<Longrightarrow> consistent A w \<Longrightarrow> consistent A w'\<close> 
+proof (rule ccontr)
+  assume 1: \<open>\<forall> q \<in> w'. \<exists> p \<in> w.  A \<turnstile> p \<^bold>\<longrightarrow> q \<close>
+  assume 2: \<open>consistent A w\<close>
+  assume \<open>\<not> consistent A w'\<close>
+  then obtain qs where ps_def: \<open>A \<turnstile> qs \<^bold>\<leadsto> \<^bold>\<bottom>\<close> \<open>set qs \<subseteq> w'\<close> 
+    unfolding consistent_def by fastforce
+  then have \<open>\<forall> q \<in> set qs. \<exists> p \<in> w. A \<turnstile> p \<^bold>\<longrightarrow> q\<close> 
+    using 1 by auto
+  then have \<open>\<exists> ps. (\<forall> q \<in> set qs. \<exists> p \<in> set ps. A \<turnstile> p \<^bold>\<longrightarrow> q) \<and> set ps \<subseteq> w\<close>
+  proof (induct qs)
+    case Nil
+    then show ?case 
+      by fastforce
+  next
+    case (Cons q qs)
+    then obtain ps where \<open>(\<forall>q\<in>set qs. \<exists>p\<in>set ps. A \<turnstile> p \<^bold>\<longrightarrow> q) \<and> set ps \<subseteq> w\<close>
+      by auto
+    moreover obtain p where \<open>p \<in> w \<and> A \<turnstile> p \<^bold>\<longrightarrow> q\<close>
+      using Cons by auto
+    ultimately have \<open>(\<forall>q\<in>set (q # qs). \<exists>p\<in>set (p # ps). A \<turnstile> p \<^bold>\<longrightarrow> q) \<and> set (p # ps) \<subseteq> w\<close> 
+      by simp
+    then show ?case 
+      by fast
+  qed  
+  then obtain ps where \<open>\<forall> q \<in> set qs. \<exists> p \<in> set ps. A \<turnstile> p \<^bold>\<longrightarrow> q\<close> \<open>set ps \<subseteq> w\<close>
+    by auto
+  then have \<open>A \<turnstile> ps \<^bold>\<leadsto> \<^bold>\<And>qs\<close> 
+  proof (induct qs)
+    case Nil
+    then show ?case 
+      using K_ImpI K_imply_head by fastforce
+  next
+    case (Cons q qs)
+    then obtain p where \<open>A \<turnstile> p \<^bold>\<longrightarrow> q\<close> \<open>p \<in> set ps\<close>
+      by auto
+    moreover have \<open>A \<turnstile> ps \<^bold>\<leadsto> \<^bold>\<And> qs\<close> 
+      using Cons by simp
+    ultimately have \<open>A \<turnstile> p # ps \<^bold>\<leadsto>  \<^bold>\<And>q # qs\<close> 
+      using add_assm_and_concl by fastforce
+    then show ?case
+      using \<open>p \<in> set ps\<close> K_ImpI K_right_mp conjunct_implies_elem imply_chain imply_implies_itself by blast
+  qed
+  from ps_def(1) this have \<open>A \<turnstile> ps \<^bold>\<leadsto> \<^bold>\<bottom>\<close> 
+    by (meson R1 imply_chain imply_implies_conjunct)
+  then show False
+    using \<open>consistent A w\<close> \<open>set ps \<subseteq> w\<close> consistent_def by blast
+qed
 
-lemma exists_implies_disjunct: \<open>\<exists> p \<in> set ps. eval g h p \<Longrightarrow> eval g h (\<^bold>\<Or> ps)\<close>
-  by (induct ps) auto
 
 (*exercise 3.28*)
 lemma Co_lemma:
@@ -1551,16 +1703,62 @@ proof -
       by simp
     moreover have \<open>set (map set W) = mcss A \<phi> \<Longrightarrow> A \<turnstile> \<^bold>\<Or> map conjunct W\<close> for W 
     proof (rule ccontr)
-      assume a: \<open>set (map set W) = mcss A \<phi>\<close> \<open>\<not>A \<turnstile> \<^bold>\<Or> map conjunct W\<close>
-      then have \<open>\<not>A \<turnstile> [\<^bold>\<not>(\<^bold>\<Or> map conjunct W)] \<^bold>\<leadsto> \<^bold>\<bottom>\<close>
-        by (metis K_Boole imply.simps(1))
-      then have \<open>consistent A {\<^bold>\<not>(\<^bold>\<Or> map conjunct W)}\<close>
-        unfolding consistent_def by (metis K_imply_weaken list.simps(15) set_empty)
-      then have \<open>consistent A {\<^bold>\<And> map (\<lambda> w. \<^bold>\<not>conjunct w) W}\<close> sorry
-      then have \<open>consistent A (set (map (\<lambda> w. \<^bold>\<not>conjunct w) W))\<close> sorry
-      then have \<open>\<exists> w'. consistent A w' \<and> (\<forall> w \<in> set W. \<exists> p \<in> set w. \<^bold>\<not>p \<in> w')\<close> sorry
+      assume a: \<open>set (map set W) = mcss A \<phi>\<close> \<open>\<not>A \<turnstile> \<^bold>\<Or> map conjunct W\<close> 
+      {
+        from a(2) have \<open>\<exists> w'. (\<forall> w \<in> set W. \<exists> p \<in> set w. p \<in> set w') \<and> \<not>A \<turnstile> \<^bold>\<Or> w'\<close> 
+          using combine_disjunct by blast
+        then obtain w' where w'_def: \<open>(\<forall> w \<in> set W. \<exists> p \<in> set w. p \<in> set w')\<close> \<open>\<not>A \<turnstile> \<^bold>\<Or> w'\<close>
+          by auto
+        then have \<open>\<not>A \<turnstile> \<^bold>\<not>(\<^bold>\<And> map Neg w')\<close>
+          by (metis K_Boole de_morgan_conjunct imp_chain imply.simps(1) imply.simps(2))
+        have \<open>consistent A {\<^bold>\<And> map Neg w'}\<close> 
+        proof (rule ccontr)
+          assume \<open>\<not>consistent A {\<^bold>\<And> map Neg w'}\<close>
+          then have \<open>A \<turnstile> [\<^bold>\<And> map Neg w'] \<^bold>\<leadsto> \<^bold>\<bottom>\<close> 
+            unfolding consistent_def 
+            by (metis (mono_tags, lifting) K_imply_weaken empty_set list.simps(15))
+          then have \<open>A \<turnstile> \<^bold>\<not>(\<^bold>\<And> map Neg w')\<close>
+            by simp
+          from \<open>\<not>A \<turnstile> \<^bold>\<not>(\<^bold>\<And> map Neg w')\<close> this show False ..
+        qed
+        moreover have \<open>\<forall> w \<in> set W. \<exists> p \<in> set w. \<^bold>\<not>p \<in> set (map Neg w')\<close>
+          using w'_def(1) by fastforce
+        ultimately have \<open>\<exists> w'. consistent A {\<^bold>\<And>w'} \<and> (\<forall> w \<in> set W. \<exists> p \<in> set w. \<^bold>\<not>p \<in> set w')\<close> 
+          by fast
+      }
+      then have \<open>\<exists> w'. consistent A (set w') \<and> (\<forall> w \<in> set W. \<exists> p \<in> set w. \<^bold>\<not>p \<in> set w')\<close>
+        by (metis conjunct_implies_elem consistent_implies insertI1)
+      then have \<open>\<exists> w'. consistent A w' \<and> (\<forall> w \<in> set W. \<exists> p \<in> set w. comp p \<in> w') \<and> w' \<subseteq> sub_C' \<phi>\<close> 
+      proof
+        fix w'
+        assume a': \<open>consistent A w' \<and> (\<forall> w \<in> set W. \<exists> p \<in> set w. \<^bold>\<not>p \<in> w')\<close>
+        define wp where \<open>wp \<equiv> {p. (\<exists> w \<in> set W. p \<in> set w) \<and> (\<^bold>\<not>p \<in> w')}\<close>
+        then have \<open>\<forall> p \<in> wp. p \<in> sub_C' \<phi>\<close>
+          using a(1) by auto
+        then have 1:\<open>\<forall> p \<in> wp. comp p \<in> sub_C' \<phi>\<close> 
+          by (metis comp_in_sub_C)
+        have \<open>finite (mcss A \<phi>)\<close>
+          by (metis List.finite_set a(1))
+        moreover have \<open>\<forall> w \<in> mcss A \<phi>. finite w\<close> 
+          by (metis List.finite_set a(1) ex_map_conv)
+        ultimately have f: \<open>finite wp\<close> 
+          unfolding wp_def using a by simp
+        have 2: \<open>\<forall> w \<in> set W. \<exists> p \<in> set w. comp p \<in> image comp wp\<close>
+          using wp_def a' by blast
+        have \<open>image Neg wp \<subseteq> w'\<close>
+          using wp_def by auto
+        then have \<open>consistent A (image Neg wp)\<close>
+          using a'(1) unfolding consistent_def by simp
+        moreover have \<open>\<forall> p. A \<turnstile> \<^bold>\<not>p \<^bold>\<longrightarrow> comp p\<close> 
+          by (metis K_trans R1 comp_imp1 comp_imp2 con_imp_antecedents swap_antecedents)
+        ultimately have \<open>consistent A (image comp wp)\<close>
+          using consistent_implies by (smt (verit, ccfv_SIG) imageE image_eqI)
+        from 1 2 this show ?thesis
+          by blast
+      qed
       then obtain w' where w'_def: 
-        \<open>consistent A w'\<close> \<open>\<forall> w \<in> set W. \<exists> p \<in> set w. comp p \<in> w'\<close> \<open>w' \<subseteq> sub_C' \<phi>\<close>sorry
+        \<open>consistent A w'\<close> \<open>\<forall> w \<in> set W. \<exists> p \<in> set w. comp p \<in> w'\<close> \<open>w' \<subseteq> sub_C' \<phi>\<close>
+        by auto
       then obtain mw' where mw'_def: \<open>consistent A mw'\<close> \<open>maximal' A \<phi> mw'\<close> \<open>w' \<subseteq> mw'\<close> \<open>mw' \<subseteq> sub_C' \<phi>\<close>
         using maximal_extension' by metis
       moreover have \<open>mw' \<notin> mcss A \<phi>\<close> 
