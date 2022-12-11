@@ -32,7 +32,6 @@ datatype 'i fm
   | K 'i \<open>'i fm\<close>
   | Ev \<open>'i list\<close> \<open>'i fm\<close>
   | Co \<open>'i list\<close> \<open>'i fm\<close>
-  | Di \<open>'i list\<close> \<open>'i fm\<close>
 
 abbreviation TT (\<open>\<^bold>\<top>\<close>) where
   \<open>TT \<equiv> \<^bold>\<bottom> \<^bold>\<longrightarrow> \<^bold>\<bottom>\<close>
@@ -60,8 +59,7 @@ primrec f_size where
   \<open>f_size (p \<^bold>\<longrightarrow> q) = f_size p + f_size q + 1\<close> |
   \<open>f_size (K i p) = f_size p + 1\<close> |
   \<open>f_size (Ev g p) = f_size p + 2\<close> |
-  \<open>f_size (Co g p) = f_size p + 1\<close> |
-  \<open>f_size (Di g p) = f_size p + 2\<close> 
+  \<open>f_size (Co g p) = f_size p + 1\<close>
 
 primrec common_count where 
   \<open>common_count \<^bold>\<bottom> = 0\<close> |
@@ -71,8 +69,7 @@ primrec common_count where
   \<open>common_count (p \<^bold>\<longrightarrow> q) = common_count p + common_count q\<close> |
   \<open>common_count (K i p) = common_count p\<close> |
   \<open>common_count (Ev g p) = common_count p\<close> |
-  \<open>common_count (Co g p) = common_count p + 1\<close> |
-  \<open>common_count (Di g p) = common_count p\<close> 
+  \<open>common_count (Co g p) = common_count p + 1\<close>
 
 primrec Ev_n where
   \<open>Ev_n g p 0 = p\<close> |
@@ -90,7 +87,6 @@ function semantics :: \<open>('i, 'w) kripke \<Rightarrow> 'w \<Rightarrow> 'i f
 | \<open>M, w \<Turnstile> K i p \<longleftrightarrow> (\<forall>v \<in> \<W> M \<inter> \<K> M i w. M, v \<Turnstile> p)\<close>
 | \<open>M, w \<Turnstile> Ev g p \<longleftrightarrow> (\<forall> i \<in> set g. M, w \<Turnstile> K i p)\<close>
 | \<open>M, w \<Turnstile> Co g p \<longleftrightarrow> (\<forall> n \<ge> 1. M, w \<Turnstile> Ev_n g p n)\<close>
-| \<open>M, w \<Turnstile> Di g p \<longleftrightarrow> (\<forall>v \<in> \<W> M \<inter> (\<Inter> i \<in> set g. \<K> M i w). M, v \<Turnstile> p)\<close>
   by pat_completeness auto
 termination 
 proof (relation \<open>measures [\<lambda> (_,_,p). common_count p, \<lambda> (_,_,p).f_size p]\<close>) 
@@ -207,7 +203,6 @@ primrec eval :: \<open>(id \<Rightarrow> bool) \<Rightarrow> ('i fm \<Rightarrow
 | \<open>eval _ h (K i p) = h (K i p)\<close>
 | \<open>eval _ h (Ev g p) = h (Ev g p)\<close>
 | \<open>eval _ h (Co g p) = h (Co g p)\<close>
-| \<open>eval _ h (Di g p) = h (Di g p)\<close>
 
 abbreviation \<open>tautology p \<equiv> \<forall>g h. eval g h p\<close>
 
@@ -224,10 +219,6 @@ inductive AK :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm \<Rightarr
   | C1a: \<open>A \<turnstile> Ev g p \<^bold>\<longrightarrow> unfold_Ev g p\<close>
   | C1b: \<open>A \<turnstile> unfold_Ev g p \<^bold>\<longrightarrow> Ev g p\<close>
   | C2: \<open>A \<turnstile> Co g p \<^bold>\<longrightarrow> Ev g (p \<^bold>\<and> Co g p)\<close>
-  | D1a: \<open>A \<turnstile> Di [i] p \<^bold>\<longrightarrow> K i p\<close>
-  | D1b: \<open>A \<turnstile> K i p \<^bold>\<longrightarrow> Di [i] p\<close>
-  | D2: \<open>set g \<subseteq> set g' \<Longrightarrow> A \<turnstile> Di g p \<^bold>\<longrightarrow> Di g' p\<close>
-  | Dmp: \<open>A \<turnstile> Di g p \<^bold>\<longrightarrow> Di g (p \<^bold>\<longrightarrow> q) \<^bold>\<longrightarrow> Di g q\<close>
   | RC1: \<open>A \<turnstile> p \<^bold>\<longrightarrow> Ev g (q \<^bold>\<and> p) \<Longrightarrow> A \<turnstile> p \<^bold>\<longrightarrow> Co g q\<close>
 
 primrec imply :: \<open>'i fm list \<Rightarrow> 'i fm \<Rightarrow> 'i fm\<close> (infixr \<open>\<^bold>\<leadsto>\<close> 56) where
@@ -1172,8 +1163,7 @@ primrec sub_C where
   \<open>sub_C (Co g p) = 
     {K i p | i. i \<in> set g} \<union>
     {K i (p \<^bold>\<and> Co g p) | i. i \<in> set g} \<union> 
-    {Ev g (p \<^bold>\<and> Co g p), p \<^bold>\<and> Co g p, Co g p} \<union> sub_C p\<close> |
-  \<open>sub_C (Di g p) = insert (Di g p) (sub_C p)\<close>
+    {Ev g (p \<^bold>\<and> Co g p), p \<^bold>\<and> Co g p, Co g p} \<union> sub_C p\<close>
 
 lemma sub_C_finite: \<open>finite (sub_C p)\<close>
   by (induct p) auto
@@ -1477,13 +1467,13 @@ lemma truth_lemma_Ka:
   assumes \<open>canonical A \<phi>, V \<Turnstile> K i p\<close> 
   shows \<open>K i p \<in> V\<close>
 proof-
-  from \<open>K i p \<in> sub_C' \<phi>\<close> have \<open>p \<in> sub_C \<phi>\<close> 
-    by (metis (mono_tags, lifting) Un_iff fm.distinct(53) image_iff insert_iff p_in_sub_C_p sub_C.simps(6) sub_C_transitive)
+  from \<open>K i p \<in> sub_C' \<phi>\<close> have \<open>p \<in> sub_C \<phi>\<close>  
+    by (metis (no_types, lifting) Un_iff fm.distinct(45) image_iff insert_iff p_in_sub_C_p sub_C.simps(6) sub_C_transitive)
   then have \<open>\<^bold>\<not> p \<in> sub_C' \<phi>\<close> 
     by simp
   moreover have \<open>\<forall> p. K i p \<in> V \<longrightarrow> p \<in> sub_C' \<phi>\<close>
-    using \<open>V \<in> mcss A \<phi>\<close> 
-    by (smt (verit, ccfv_SIG) Un_iff fm.distinct(53) image_iff insert_absorb insert_iff insert_subset mem_Collect_eq p_in_sub_C_p sub_C.simps(6) sub_C_transitive)
+    using \<open>V \<in> mcss A \<phi>\<close>
+    by (smt (verit, ccfv_SIG) Un_iff fm.distinct(45) image_iff insertCI insert_absorb insert_subset mem_Collect_eq p_in_sub_C_p sub_C.simps(6) sub_C_transitive)
   ultimately have \<open>{\<^bold>\<not> p} \<union> known V i \<subseteq> sub_C' \<phi>\<close>
     by auto
 
@@ -2138,8 +2128,8 @@ next
 next
   case (Ev g p)
   have \<open>p \<in> sub_C' \<phi>\<close> 
-    using \<open>Ev g p \<in> sub_C' \<phi>\<close> p_in_sub_C_p sub_C.simps(7) sub_C_transitive
-    by (smt (verit, ccfv_threshold) Un_iff Un_insert_right fm.distinct(55) image_iff sup_commute)
+    using \<open>Ev g p \<in> sub_C' \<phi>\<close> p_in_sub_C_p sub_C.simps(7) sub_C_transitive 
+    by (smt (verit, ccfv_threshold) Un_iff Un_insert_right fm.distinct(47) image_iff sup_commute)
   then have \<open>\<And> V. V \<in> mcss A \<phi> \<Longrightarrow> p \<in> V \<longleftrightarrow> canonical A \<phi>, V \<Turnstile> p\<close>
     using Ev.hyps by blast
   moreover have \<open>V \<in> mcss A \<phi>\<close>
@@ -2277,7 +2267,7 @@ next
     proof (rule ccontr)
       assume \<open>Co g p \<notin> V\<close>
       then have \<open>\<^bold>\<not>Co g p \<in> V\<close>
-        using Co.prems comp.simps(16) exactly_one_in_maximal' 
+        using Co.prems comp.simps(15) exactly_one_in_maximal' 
         by (smt (verit, best) mem_Collect_eq)
       then have \<open>A; V \<turnstile> \<^bold>\<not>Co g p\<close>
         by (metis K_imply_head \<v>_def extract_from_list subset_refl)
@@ -2291,9 +2281,6 @@ next
         using Co consistent_def by blast
       qed
   qed
-next
-  case (Di g p)
-  then show ?case sorry
 qed
 
 lemma canonical_model:
@@ -2428,7 +2415,7 @@ proof (safe)
     by (simp add: p_in_sub_C_p)
   ultimately have \<open>p \<in> sub_C' \<phi>\<close> 
     using \<open>V \<subseteq> sub_C' \<phi>\<close>  
-    by (smt (verit, del_insts) Un_iff fm.distinct(53) image_iff in_mono sub_C_transitive) 
+    by (smt (verit, del_insts) Un_iff fm.distinct(45) image_iff in_mono sub_C_transitive) 
   moreover have \<open>A \<turnstile> K i p \<^bold>\<longrightarrow> p\<close>
     by (metis Ax AxT.simps assms(1) rev_predicate1D)
   ultimately show \<open>p \<in> V\<close> 
@@ -2468,133 +2455,6 @@ theorem main\<^sub>T: \<open>G \<TTurnstile>\<^sub>T p \<longleftrightarrow> G \
 
 corollary \<open>G \<TTurnstile>\<^sub>T p \<longrightarrow> reflexive; G \<TTurnstile>\<star> p\<close> if \<open>finite G\<close>
   using strong_soundness\<^sub>T[of G p] strong_completeness\<^sub>T[of G p] that by fast
-
-(*Following is the extension to symmetric frames which didn't work
-section \<open>System KB\<close>
-
-inductive AxB :: \<open>'i fm \<Rightarrow> bool\<close> where
-  \<open>AxB (p \<^bold>\<longrightarrow> K i (L i p))\<close>
-
-abbreviation SystemKB (\<open>_ \<turnstile>\<^sub>K\<^sub>B _\<close> [50, 50] 50) where
-  \<open>G \<turnstile>\<^sub>K\<^sub>B p \<equiv> AxB; G \<turnstile> p\<close>
-
-lemma soundness_AxB: \<open>AxB p \<Longrightarrow> symmetric M \<Longrightarrow> w \<in> \<W> M \<Longrightarrow> M, w \<Turnstile> p\<close>
-  unfolding symmetric_def by (induct p rule: AxB.induct) auto
-
-lemma strong_soundness\<^sub>K\<^sub>B: \<open>G \<turnstile>\<^sub>K\<^sub>B p \<Longrightarrow> symmetric; G \<TTurnstile>\<star> p\<close>
-  using strong_soundness soundness_AxB .
-
-lemma AK_assms_R1: \<open>A; G \<turnstile> p \<Longrightarrow> A; G \<turnstile> p \<^bold>\<longrightarrow> q \<Longrightarrow> A; G \<turnstile> q\<close>
-proof-
-  assume \<open>A; G \<turnstile> p\<close>
-  then obtain xs where \<open>set xs \<subseteq> G\<close> \<open>A \<turnstile> xs \<^bold>\<leadsto> p\<close>
-    by auto
-  assume \<open>A; G \<turnstile> p \<^bold>\<longrightarrow> q\<close>
-  then obtain ys where \<open>set ys \<subseteq> G\<close> \<open>A \<turnstile> ys \<^bold>\<leadsto> (p \<^bold>\<longrightarrow> q)\<close>
-    by auto
-  have \<open>A \<turnstile> xs @ ys \<^bold>\<leadsto> p\<close>
-    using \<open>A \<turnstile> xs \<^bold>\<leadsto> p\<close> by (simp add: K_imply_weaken)
-  moreover have \<open>A \<turnstile> xs @ ys \<^bold>\<leadsto> (p \<^bold>\<longrightarrow> q)\<close> 
-    using \<open>A \<turnstile> ys \<^bold>\<leadsto> (p \<^bold>\<longrightarrow> q)\<close> by (simp add: K_imply_weaken)
-  ultimately have \<open>A \<turnstile> xs @ ys \<^bold>\<leadsto> q\<close>
-    using K_right_mp by auto
-  then show ?thesis
-    using \<open>set xs \<subseteq> G\<close> \<open>set ys \<subseteq> G\<close> by (metis set_append sup.boundedI)
-qed
-
-lemma AxB_symmetric':
-  assumes \<open>AxB \<le> A\<close> \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>consistent A W\<close> \<open>maximal' A \<phi> W\<close> \<open>V \<subseteq> sub_C' \<phi>\<close> \<open>W \<subseteq> sub_C' \<phi>\<close>
-    and \<open>W \<in> reach A i V\<close>
-  shows \<open>V \<in> reach A i W\<close>
-proof -
-  have \<open>\<forall>p. K i p \<in> W \<longrightarrow> p \<in> V\<close>
-  proof (safe, rule ccontr)
-    fix p
-    assume \<open>K i p \<in> W\<close> 
-    then have \<open>K i p \<in> sub_C' \<phi>\<close>
-      using assms(7) by auto
-    moreover have \<open>p \<in> sub_C (K i p)\<close>
-      by (simp add: p_in_sub_C_p)
-    ultimately have \<open>p \<in> sub_C' \<phi>\<close> 
-      by (metis (no_types, lifting) Un_iff fm.distinct(53) image_iff sub_C_transitive)
-    moreover assume \<open>p \<notin> V\<close>
-    ultimately have \<open>comp p \<in> V\<close>
-      using assms by (simp add: exactly_one_in_maximal')
-    then have \<open>set [comp p] \<subseteq> V\<close> 
-      by simp
-    moreover have \<open>A \<turnstile> comp p \<^bold>\<longrightarrow> K i (L i (comp p))\<close> 
-      by (metis Ax AxB.simps assms(1) rev_predicate1D)
-    ultimately have \<open>L i (comp p) \<in> known A V i\<close> 
-      by fastforce
-    then have \<open>A; W \<turnstile> L i (comp p)\<close>
-      using \<open>W \<in> reach A i V\<close> by simp
-    have \<open>A; W \<turnstile> K i p \<^bold>\<longrightarrow> L i (comp p) \<^bold>\<longrightarrow> \<^bold>\<bottom>\<close>
-    proof-
-      have \<open>A \<turnstile> p \<^bold>\<longrightarrow> \<^bold>\<not>(comp p)\<close> 
-        using comp_imp1 by auto
-      then have \<open>A \<turnstile> K i (p \<^bold>\<longrightarrow> \<^bold>\<not>(comp p))\<close> 
-        using R2 by fast
-      moreover have \<open>A \<turnstile> K i (p \<^bold>\<longrightarrow> \<^bold>\<not>(comp p)) \<^bold>\<longrightarrow> K i p \<^bold>\<longrightarrow> K i (\<^bold>\<not>(comp p))\<close>
-        by (simp add: K_A2')
-      moreover have \<open>A \<turnstile> K i (\<^bold>\<not>(comp p)) \<^bold>\<longrightarrow> L i (comp p) \<^bold>\<longrightarrow> \<^bold>\<bottom>\<close>
-        using A1 by force
-      ultimately have \<open>A \<turnstile> K i p \<^bold>\<longrightarrow> L i (comp p) \<^bold>\<longrightarrow> \<^bold>\<bottom>\<close>
-        using R1 imp_chain by blast
-      then show ?thesis 
-        by (metis bot.extremum empty_set imply.simps(1))
-    qed
-    then obtain qs where \<open>set qs \<subseteq> W \<and> A \<turnstile> qs \<^bold>\<leadsto> (K i p \<^bold>\<longrightarrow> L i (comp p) \<^bold>\<longrightarrow> \<^bold>\<bottom>)\<close>
-      by fast
-    then have \<open>set (qs @ [K i p]) \<subseteq> W \<and> A \<turnstile> (qs @ [K i p]) \<^bold>\<leadsto> (L i (comp p) \<^bold>\<longrightarrow> \<^bold>\<bottom>)\<close> 
-      using \<open>K i p \<in> W\<close> 
-      by (simp add: imply_append)
-    then have \<open>A; W \<turnstile> L i (comp p) \<^bold>\<longrightarrow> \<^bold>\<bottom>\<close>
-      by fast
-    then have \<open>A; W \<turnstile> \<^bold>\<bottom>\<close>
-      using \<open>A; W \<turnstile> L i (comp p)\<close> AK_assms_R1 by blast 
-    then show False
-      using assms(4) consistent_def by auto
-  qed
-  have \<open>\<forall> p. A; W \<turnstile> K i p \<longrightarrow> A; V \<turnstile> p\<close> 
-  proof (rule allI, rule impI)
-    fix p 
-    from \<open>W \<in> reach A i V\<close> have *:\<open>\<forall> p. A; V \<turnstile> K i p \<longrightarrow> A; W \<turnstile> p\<close>
-      by simp
-    assume \<open>A; W \<turnstile> K i p\<close>
-    moreover have \<open>A; W \<turnstile> K i p\<close>
-    show \<open>A; V \<turnstile> p\<close> sorry
-  qed
-  then show ?thesis
-    using assms(2-3) by simp
-qed
-
-lemma symmetric\<^sub>K\<^sub>B:
-  assumes \<open>AxB \<le> A\<close>
-  shows \<open>symmetric (canonical A)\<close>
-  unfolding symmetric_def
-proof (intro allI ballI)
-  fix i V W
-  assume \<open>V \<in> \<W> (canonical A)\<close> \<open>W \<in> \<W> (canonical A)\<close>
-  then have \<open>consistent A V\<close> \<open>maximal A V\<close> \<open>consistent A W\<close> \<open>maximal A W\<close>
-    by simp_all
-  with AxB_symmetric' assms have \<open>W \<in> reach A i V \<longleftrightarrow> V \<in> reach A i W\<close>
-    by metis
-  then show \<open>(W \<in> \<K> (canonical A) i V) = (V \<in> \<K> (canonical A) i W)\<close>
-    by simp
-qed
-
-abbreviation validKB (\<open>_ \<TTurnstile>\<^sub>K\<^sub>B _\<close> [50, 50] 50) where
-  \<open>G \<TTurnstile>\<^sub>K\<^sub>B p \<equiv> symmetric; G \<TTurnstile> p\<close>
-
-lemma strong_completeness\<^sub>K\<^sub>B: \<open>G \<TTurnstile>\<^sub>K\<^sub>B p \<Longrightarrow> G \<turnstile>\<^sub>K\<^sub>B p\<close>
-  using strong_completeness symmetric\<^sub>K\<^sub>B by blast
-
-theorem main\<^sub>K\<^sub>B: \<open>G \<TTurnstile>\<^sub>K\<^sub>B p \<longleftrightarrow> G \<turnstile>\<^sub>K\<^sub>B p\<close>
-  using strong_soundness\<^sub>K\<^sub>B[of G p] strong_completeness\<^sub>K\<^sub>B[of G p] by fast
-
-corollary \<open>G \<TTurnstile>\<^sub>K\<^sub>B p \<longrightarrow> symmetric; G \<TTurnstile>\<star> p\<close>
-  using strong_soundness\<^sub>K\<^sub>B[of G p] strong_completeness\<^sub>K\<^sub>B[of G p] by fast
-*)
 
 section \<open>Acknowledgements\<close>
 
