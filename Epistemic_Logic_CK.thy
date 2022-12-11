@@ -1,18 +1,17 @@
 (*
-  File:      Epistemic_Logic.thy
-  Author:    Asta Halkjær From
-  Modified by: Jakub Eugeniusz Janaszkiewicz & Simon Tobias Lund
+  File:      Epistemic_Logic_CK.thy
+  Author of Epistemic_Logic.thy:    Asta Halkjær From
+  Modified to Epistemic_Logic_CK.thy by: Simon Tobias Lund & Jakub Eugeniusz Janaszkiewicz
 
-  This work is a formalization of epistemic logic with countably many agents.
-  It includes proofs of soundness and completeness for the axiom system K.
-  The completeness proof is based on the textbook "Reasoning About Knowledge"
-  by Fagin, Halpern, Moses and Vardi (MIT Press 1995).
-  The extensions of system K (T, KB, K4, S4, S5) and their completeness proofs
-  are based on the textbook "Modal Logic" by Blackburn, de Rijke and Venema
-  (Cambridge University Press 2001).
+  This is a reworking of Epistemic_Logic.thy by Asta Halkjær From to 
+  epistemic logic with common knowledge. 
+  The general structure remains the same, and so do many of the proofs.
+  The canonical models have been restricted to finite sets of formulas like they do when
+  introducing common knowledge in Reasoning About Knowledge by Fagin, Halpern, Moses, and Vardi.
+  The part of truth_lemma concerned with the Co operator also follows the same lines as this book.
 *)
 
-theory Epistemic_Logic imports "HOL-Library.Countable" begin
+theory Epistemic_Logic_CK imports "HOL-Library.Countable" begin
 
 section \<open>Auxiliary\<close>
 
@@ -315,7 +314,7 @@ qed (auto simp: assms tautology)
 section \<open>Derived rules\<close>
 
 lemma imp_chain: \<open>A \<turnstile> a \<^bold>\<longrightarrow> b \<Longrightarrow> A \<turnstile> b \<^bold>\<longrightarrow> c \<Longrightarrow> A \<turnstile> a \<^bold>\<longrightarrow> c\<close>
-proof -
+proof-
   assume \<open>A \<turnstile> a \<^bold>\<longrightarrow> b\<close>
   moreover assume \<open>A \<turnstile> b \<^bold>\<longrightarrow> c\<close>
   moreover have \<open>A \<turnstile> (a \<^bold>\<longrightarrow> b) \<^bold>\<longrightarrow> (b \<^bold>\<longrightarrow> c) \<^bold>\<longrightarrow> (a \<^bold>\<longrightarrow> c)\<close>
@@ -1150,7 +1149,7 @@ lemma inconsistent_imply:
   using assms K_Boole K_imply_weaken unfolding consistent_def
   by (metis insert_is_Un list.simps(15))
 
-subsection \<open>Maximal consistent sets\<close>
+subsection \<open>the set of all subformulas++\<close>
 
 primrec sub_C where
   \<open>sub_C \<^bold>\<bottom> = {\<^bold>\<bottom>}\<close> |
@@ -1175,6 +1174,71 @@ abbreviation sub_C' where \<open>sub_C' p \<equiv> sub_C p \<union> (image Neg (
 
 lemma sub_C'_finite: \<open>finite (sub_C' p)\<close> 
   by (simp add: sub_C_finite)
+
+lemma sub_C_transitive: \<open>p \<in> sub_C q \<Longrightarrow> q \<in> sub_C r \<Longrightarrow> p \<in> sub_C r\<close>
+  by (induct r, induct q, auto)
+
+lemma sub_sub_C': \<open>p \<in> sub_C' \<phi> \<Longrightarrow> q \<in> sub_C p \<Longrightarrow> q = \<^bold>\<bottom> \<or> q \<in> sub_C' \<phi>\<close>
+proof-
+  assume \<open>q \<in> sub_C p\<close>
+  assume \<open>p \<in> sub_C' \<phi>\<close>
+  then consider \<open>p \<in> sub_C \<phi>\<close> | \<open>p \<in> image Neg (sub_C \<phi>)\<close>
+    by auto
+  then show ?thesis
+  proof cases
+    case 1
+    from this \<open>q \<in> sub_C p\<close> have \<open>q \<in> sub_C \<phi>\<close>
+      using sub_C_transitive by auto
+    then show ?thesis
+      by simp
+  next
+    case 2
+    then obtain p' where \<open>p = \<^bold>\<not>p'\<close> \<open>p' \<in> sub_C \<phi>\<close>
+      by auto
+    moreover have \<open>q \<in> sub_C p \<longrightarrow> p = \<^bold>\<not>p' \<longrightarrow> q \<in> sub_C p' \<or> q = p \<or> q = \<^bold>\<bottom>\<close> 
+      by (cases p) auto
+    ultimately show ?thesis 
+      by (metis UnI1 \<open>p \<in> sub_C' \<phi>\<close> \<open>q \<in> sub_C p\<close> sub_C_transitive)
+  qed 
+qed
+
+lemma comp_in_sub_C: \<open>comp p \<in> sub_C' \<phi>\<close> if \<open>p \<in> sub_C' \<phi>\<close>
+proof (cases \<open>\<exists> p'. p = \<^bold>\<not> p'\<close>)
+  case True
+  then obtain p' where \<open>p = \<^bold>\<not>p'\<close> ..
+  then have \<open>comp p = p'\<close>
+    by simp
+  have \<open>p' \<in> sub_C' \<phi>\<close>
+  proof (cases \<open>p \<in> sub_C \<phi>\<close>)
+    case True
+    from this \<open>p = \<^bold>\<not>p'\<close> have \<open>p' \<in> sub_C \<phi>\<close>
+    proof (induct \<phi>)
+      case (Imp \<phi>1 \<phi>2)
+      then show ?case 
+        using p_in_sub_C_p by (cases \<open>\<phi>2 = \<^bold>\<bottom>\<close>,force,auto)
+    qed auto
+    then show ?thesis 
+      by simp
+  next
+    case False
+    then show ?thesis
+      using \<open>comp p = p'\<close> \<open>p \<in> sub_C' \<phi>\<close> by fastforce
+  qed
+  then show ?thesis 
+    by (simp add: \<open>comp p = p'\<close>)
+next
+  case False
+  then have \<open>comp p = \<^bold>\<not>p\<close>
+  proof (cases p)
+    case (Imp p q)
+    then show ?thesis 
+      using False by (cases q) auto
+  qed auto
+  then show ?thesis 
+    using False that by auto
+qed
+
+subsection \<open>Maximal consistent sets\<close>
 
 definition maximal' where
   \<open>maximal' A \<phi> S \<equiv> \<forall> p \<in> sub_C' \<phi>. p \<notin> S \<longrightarrow> \<not> consistent A ({p} \<union> S)\<close>
@@ -1219,43 +1283,6 @@ proof (rule ccontr)
       using \<open>consistent A V\<close> ..
   qed
 qed
-
-lemma comp_in_sub_C: \<open>comp p \<in> sub_C' \<phi>\<close> if \<open>p \<in> sub_C' \<phi>\<close>
-proof (cases \<open>\<exists> p'. p = \<^bold>\<not> p'\<close>)
-  case True
-  then obtain p' where \<open>p = \<^bold>\<not>p'\<close> ..
-  then have \<open>comp p = p'\<close>
-    by simp
-  have \<open>p' \<in> sub_C' \<phi>\<close>
-  proof (cases \<open>p \<in> sub_C \<phi>\<close>)
-    case True
-    from this \<open>p = \<^bold>\<not>p'\<close> have \<open>p' \<in> sub_C \<phi>\<close>
-    proof (induct \<phi>)
-      case (Imp \<phi>1 \<phi>2)
-      then show ?case 
-        using p_in_sub_C_p by (cases \<open>\<phi>2 = \<^bold>\<bottom>\<close>,force,auto)
-    qed auto
-    then show ?thesis 
-      by simp
-  next
-    case False
-    then show ?thesis
-      using \<open>comp p = p'\<close> \<open>p \<in> sub_C' \<phi>\<close> by fastforce
-  qed
-  then show ?thesis 
-    by (simp add: \<open>comp p = p'\<close>)
-next
-  case False
-  then have \<open>comp p = \<^bold>\<not>p\<close>
-  proof (cases p)
-    case (Imp p q)
-    then show ?thesis 
-      using False by (cases q) auto
-  qed auto
-  then show ?thesis 
-    using False that by auto
-qed
-
 
 lemma deriv_in_maximal': 
   assumes \<open>consistent A V\<close> \<open>maximal' A \<phi> V\<close> \<open>p \<in> sub_C' \<phi>\<close> \<open>A \<turnstile> p\<close>
@@ -1309,7 +1336,7 @@ next
 qed
 
 subsection \<open>Lindenbaum extension\<close>
-
+(*the countable stuff is probably not needed, as you can just look at all formulas in sub_C' \<phi>*)
 instantiation fm :: (countable) countable begin
 instance by countable_datatype
 end
@@ -1432,34 +1459,6 @@ abbreviation mcss :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm \<Rig
 abbreviation canonical :: \<open>('i fm \<Rightarrow> bool) \<Rightarrow> 'i fm \<Rightarrow> ('i, 'i fm set) kripke\<close> where
   \<open>canonical A \<phi> \<equiv> \<lparr>\<W> = mcss A \<phi>, \<K> = reach A, \<pi> = pi\<rparr>\<close>
 
-lemma sub_C_transitive: \<open>p \<in> sub_C q \<Longrightarrow> q \<in> sub_C r \<Longrightarrow> p \<in> sub_C r\<close>
-  by (induct r, induct q, auto)
-
-lemma sub_sub_C': \<open>p \<in> sub_C' \<phi> \<Longrightarrow> q \<in> sub_C p \<Longrightarrow> q = \<^bold>\<bottom> \<or> q \<in> sub_C' \<phi>\<close>
-proof-
-  assume \<open>q \<in> sub_C p\<close>
-  assume \<open>p \<in> sub_C' \<phi>\<close>
-  then consider \<open>p \<in> sub_C \<phi>\<close> | \<open>p \<in> image Neg (sub_C \<phi>)\<close>
-    by auto
-  then show ?thesis
-  proof cases
-    case 1
-    from this \<open>q \<in> sub_C p\<close> have \<open>q \<in> sub_C \<phi>\<close>
-      using sub_C_transitive by auto
-    then show ?thesis
-      by simp
-  next
-    case 2
-    then obtain p' where \<open>p = \<^bold>\<not>p'\<close> \<open>p' \<in> sub_C \<phi>\<close>
-      by auto
-    moreover have \<open>q \<in> sub_C p \<longrightarrow> p = \<^bold>\<not>p' \<longrightarrow> q \<in> sub_C p' \<or> q = p \<or> q = \<^bold>\<bottom>\<close> 
-      by (cases p) auto
-    ultimately show ?thesis 
-      by (metis UnI1 \<open>p \<in> sub_C' \<phi>\<close> \<open>q \<in> sub_C p\<close> sub_C_transitive)
-  qed 
-qed
-
-
 lemma truth_lemma_Ka: 
   fixes p :: \<open>('i :: countable) fm\<close>
   assumes prems: \<open>V \<in> mcss A \<phi>\<close> \<open>K i p \<in> sub_C' \<phi>\<close>
@@ -1564,7 +1563,7 @@ proof (rule ccontr)
 qed
 
 
-(*exercise 3.28*)
+(*exercise 3.28 from Reasoning About Knowledge*)
 lemma Co_lemma:
   fixes A \<phi> g 
   fixes p :: \<open>('i :: countable) fm\<close>
@@ -1845,7 +1844,6 @@ proof -
       using assms(4) * by simp
   qed
 qed
-
 
 lemma truth_lemma_K: 
   fixes p :: \<open>('i :: countable) fm\<close>
@@ -2456,14 +2454,12 @@ theorem main\<^sub>T: \<open>G \<TTurnstile>\<^sub>T p \<longleftrightarrow> G \
 corollary \<open>G \<TTurnstile>\<^sub>T p \<longrightarrow> reflexive; G \<TTurnstile>\<star> p\<close> if \<open>finite G\<close>
   using strong_soundness\<^sub>T[of G p] strong_completeness\<^sub>T[of G p] that by fast
 
-section \<open>Acknowledgements\<close>
-
-text \<open>
-The formalization is inspired by Berghofer's formalization of Henkin-style completeness.
-
-  \<^item> Stefan Berghofer:
-  First-Order Logic According to Fitting.
-  \<^url>\<open>https://www.isa-afp.org/entries/FOL-Fitting.shtml\<close>
-\<close>
+(*
+  We cannot easily continue to more complex frame conditions for the following reason:
+  Take symmetric frames an example. For this we could add the axiom p \<^bold>\<longrightarrow> K i (L i p).
+  Because of the restriction to finite canonical models we cannot guarantee that if p \<in> V then
+  K i (L i p) \<in> V, even with this axiom. This is because K i (L i p) might not be in sub_C' \<phi>,
+  even though p is. Thus, a canonical model for this axiom is not necessarily symmetric. 
+*)
 
 end
