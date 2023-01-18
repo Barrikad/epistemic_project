@@ -2314,7 +2314,7 @@ abbreviation valid :: \<open>(('i :: countable, 'i fm set) kripke \<Rightarrow> 
 abbreviation P_canonical where
   \<open>P_canonical P A qs p \<equiv> P (canonical A ((\<^bold>\<not> p) # qs \<^bold>\<leadsto> \<^bold>\<bottom>))\<close>
 
-theorem strong_completeness:
+theorem completeness:
   assumes \<open>finite G\<close> and \<open>P; G \<TTurnstile> (p :: ('i :: countable) fm)\<close> and 
     \<open>\<forall> qs. set qs = G \<longrightarrow> P_canonical P A qs p\<close>
   shows \<open>A; G \<turnstile> p\<close>
@@ -2353,12 +2353,12 @@ proof (rule ccontr)
     using \<open>?M, ?V \<Turnstile> (\<^bold>\<not> p)\<close> by simp
 qed
 
-corollary completeness:
+corollary completeness':
   assumes \<open>P; {} \<TTurnstile> p\<close> and \<open>P_canonical P A [] p\<close>
   shows \<open>A \<turnstile> p\<close>
 proof-
   have \<open>A; {} \<turnstile> p\<close>
-    using assms strong_completeness[where G=\<open>{}\<close>] by blast
+    using assms completeness[where G=\<open>{}\<close>] by blast
   then show \<open>A \<turnstile> p\<close> 
     by simp
 qed
@@ -2366,7 +2366,7 @@ qed
 corollary completeness\<^sub>A:
   assumes \<open>(\<lambda>_. True); {} \<TTurnstile> p\<close>
   shows \<open>A \<turnstile> p\<close>
-  using assms completeness by blast
+  using assms completeness' by blast
 
 section \<open>System K\<close>
 
@@ -2379,14 +2379,14 @@ lemma strong_soundness\<^sub>K: \<open>G \<turnstile>\<^sub>K p \<Longrightarrow
 abbreviation validK (\<open>_ \<TTurnstile>\<^sub>K _\<close> [50, 50] 50) where
   \<open>G \<TTurnstile>\<^sub>K p \<equiv> (\<lambda>_. True); G \<TTurnstile> p\<close>
 
-lemma strong_completeness\<^sub>K: \<open>G \<TTurnstile>\<^sub>K p \<Longrightarrow> G \<turnstile>\<^sub>K p\<close> if \<open>finite G\<close>
-  using strong_completeness[of G \<open>\<lambda>_. True\<close>] that by auto
+lemma completeness\<^sub>K: \<open>G \<TTurnstile>\<^sub>K p \<Longrightarrow> G \<turnstile>\<^sub>K p\<close> if \<open>finite G\<close>
+  using completeness[of G \<open>\<lambda>_. True\<close>] that by auto
 
 theorem main\<^sub>K: \<open>G \<TTurnstile>\<^sub>K p \<longleftrightarrow> G \<turnstile>\<^sub>K p\<close> if \<open>finite G\<close>
-  using strong_soundness\<^sub>K[of G p] strong_completeness\<^sub>K[of G p] that by fast
+  using strong_soundness\<^sub>K[of G p] completeness\<^sub>K[of G p] that by fast
 
 corollary \<open>G \<TTurnstile>\<^sub>K p \<Longrightarrow> (\<lambda>_. True); G \<TTurnstile>\<star> p\<close> if \<open>finite G\<close>
-  using strong_soundness\<^sub>K[of G p] strong_completeness\<^sub>K[of G p] that by fast
+  using strong_soundness\<^sub>K[of G p] completeness\<^sub>K[of G p] that by fast
 
 section \<open>System T\<close>
 
@@ -2403,6 +2403,7 @@ lemma soundness_AxT: \<open>AxT p \<Longrightarrow> reflexive M \<Longrightarrow
 
 lemma strong_soundness\<^sub>T: \<open>G \<turnstile>\<^sub>T p \<Longrightarrow> reflexive; G \<TTurnstile>\<star> p\<close>
   using strong_soundness soundness_AxT .
+
 lemma AxT_reflexive:
   assumes \<open>AxT \<le> A\<close> and \<open>consistent A V\<close> and \<open>maximal' A \<phi> V\<close> and \<open>V \<subseteq> sub_C' \<phi>\<close>
   shows \<open>V \<in> reach A i V\<close>
@@ -2423,7 +2424,7 @@ qed
 lemma reflexive\<^sub>T:
   assumes \<open>AxT \<le> A\<close>
   shows \<open>\<forall> (\<phi> :: ('i :: countable) fm). reflexive (canonical A \<phi>)\<close>
-  unfolding reflexive_def
+  unfolding reflexive_def 
 proof safe
   fix i V \<phi>
   assume \<open>V \<in> \<W> (canonical A \<phi>)\<close>
@@ -2437,7 +2438,7 @@ qed
 abbreviation validT (\<open>_ \<TTurnstile>\<^sub>T _\<close> [50, 50] 50) where
   \<open>G \<TTurnstile>\<^sub>T p \<equiv> reflexive; G \<TTurnstile> p\<close>
 
-lemma strong_completeness\<^sub>T: \<open>G \<TTurnstile>\<^sub>T p \<Longrightarrow> G \<turnstile>\<^sub>T p\<close> if \<open>finite G\<close>
+lemma completeness\<^sub>T: \<open>G \<TTurnstile>\<^sub>T p \<Longrightarrow> G \<turnstile>\<^sub>T p\<close> if \<open>finite G\<close>
 proof-
   have \<open>\<forall>(\<phi> :: ('i :: countable) fm). reflexive (canonical AxT \<phi>)\<close> 
     using reflexive\<^sub>T by auto
@@ -2445,14 +2446,14 @@ proof-
     by fast
   moreover assume \<open>G \<TTurnstile>\<^sub>T p\<close>
   ultimately show ?thesis
-    using strong_completeness \<open>finite G\<close> by blast
+    using completeness \<open>finite G\<close> by blast
 qed
 
 theorem main\<^sub>T: \<open>G \<TTurnstile>\<^sub>T p \<longleftrightarrow> G \<turnstile>\<^sub>T p\<close> if \<open>finite G\<close>
-  using strong_soundness\<^sub>T[of G p] strong_completeness\<^sub>T[of G p] that by fast
+  using strong_soundness\<^sub>T[of G p] completeness\<^sub>T[of G p] that by fast
 
 corollary \<open>G \<TTurnstile>\<^sub>T p \<longrightarrow> reflexive; G \<TTurnstile>\<star> p\<close> if \<open>finite G\<close>
-  using strong_soundness\<^sub>T[of G p] strong_completeness\<^sub>T[of G p] that by fast
+  using strong_soundness\<^sub>T[of G p] completeness\<^sub>T[of G p] that by fast
 
 (*
   We cannot easily continue to more complex frame conditions for the following reason:
